@@ -1,0 +1,7 @@
+name: torch-gel
+channels:
+    - soumith
+dependencies:
+    - python=3.6
+    - pytorch
+    - cuda80
