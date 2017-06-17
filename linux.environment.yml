@@ -1,7 +1,10 @@
 name: torch-gel
 channels:
     - soumith
+    - cvxgrp
 dependencies:
     - python=3.6
     - pytorch
+    - cvxpy
+    - cvxopt
     - cuda80
