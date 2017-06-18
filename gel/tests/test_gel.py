@@ -71,7 +71,7 @@ class TestGel(unittest.TestCase):
         p = len(groups)
         m = 189
         l_1 = 4. / (2*m)
-        l_2 = 0.
+        l_2 = 0.5 / (2*m)
         t_init = 0.1
         ls_beta = 0.9
 
@@ -103,8 +103,11 @@ class TestGel(unittest.TestCase):
                             for j in range(p))
             if method == "self":
                 self_obj = g_b + h_b
+                self_b = b
             else:
                 cvx_obj = g_b + h_b
+                cvx_b = b
 
         # Compare self to ground truth
         self.assertTrue(np.allclose(self_obj, cvx_obj))
+        self.assertTrue(np.allclose(self_b, cvx_b, atol=1e-5, rtol=1e-3))
