@@ -9,7 +9,7 @@ import torch
 
 def ridge_paths(X, y, support, lambdas, summ_fun):
     """Solve ridge ridgression for a sequence of regularization values,
-    and return the score for each.
+    and return the summary for each.
 
     The multiple solutions are obtained efficiently using the Woodbury
     identity. The ridge solution is given by
