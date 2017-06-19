@@ -15,7 +15,7 @@ class TestGelPaths(unittest.TestCase):
     def test_ridge_paths(self):
         """Test the ridge_paths function."""
         # Setup
-        X = torch.rand(10, 20)
+        X = torch.rand(20, 10)
         y = torch.rand(10)
         support = torch.LongTensor(range(20))
         lambdas = [0.1, 0.2, 0.3, 0.4, 0.5]
@@ -23,9 +23,9 @@ class TestGelPaths(unittest.TestCase):
 
         summaries = ridge_paths(X, y, support, lambdas, summ_fun)
         # Compare each b with the naive solution
-        I = torch.eye(X.size()[1])
-        Q = X.transpose(0, 1)@X # X.T@X
-        r = X.transpose(0, 1)@y # X.T@y
+        I = torch.eye(X.size()[0])
+        Q = X@X.transpose(0, 1) # X@X.T
+        r = X@y # X@y
         for l, b in summaries.items():
             b_naive = torch.inverse(Q + l*I)@r
             self.assertTrue(np.allclose(b.numpy(), b_naive.numpy(), atol=1e-4,

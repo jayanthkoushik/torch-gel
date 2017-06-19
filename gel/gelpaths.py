@@ -16,20 +16,20 @@ def ridge_paths(X, y, support, lambdas, summ_fun):
     The multiple solutions are obtained efficiently using the Woodbury
     identity. The ridge solution is given by
 
-        b = (X.T@X + l*I)^{-1}@X.T@y
+        b = (X@X.T + l*I)^{-1}@X@y
 
     This can be reduced to
 
-        (1/l)*(X.T@y - X.T@V(e + l*I)^{-1}@(X.T@V).T@X.T@y)
+        (1/l)*(X@y - X@V(e + l*I)^{-1}@(X@V).T@X@y)
 
-    where V@e@V.T is the eigendecomposition of X@X.T. Since (e + l*I) is
+    where V@e@V.T is the eigendecomposition of X.T@X. Since (e + l*I) is
     a diagonal matrix, its inverse can be performed efficiently simply by
-    taking the reciprocal of the diagonal elements. Then, (X.T@V).T@X.T@y
+    taking the reciprocal of the diagonal elements. Then, (X@V).T@X@y
     is a vector; so it can be multiplied by (e + l*I)^{-1} just by scalar
     multiplication.
 
     Arguments:
-        X: mxp matrix of features.
+        X: pxm matrix of features (where m is the number of samples)
         y: m-vector of outcomes.
         support: LongTensor of features from X to use.
         lambdas: list of regularization values for which to solve the problem.
@@ -39,11 +39,11 @@ def ridge_paths(X, y, support, lambdas, summ_fun):
     The funciton returns a dictionary mapping lambda values to their summaries.
     """
     # Setup
-    X = X.transpose(0, 1)[support].transpose(0, 1)
-    e, V = torch.symeig(X@X.transpose(0, 1), eigenvectors=True)
-    p = X.transpose(0, 1)@y # X.T@y
-    Q = X.transpose(0, 1)@V # X.T@V
-    r = Q.transpose(0, 1)@p # (X.T@V).T@X.T@y
+    X = X[support]
+    e, V = torch.symeig(X.transpose(0, 1)@X, eigenvectors=True)
+    p = X@y # X@y
+    Q = X@V # X@V
+    r = Q.transpose(0, 1)@p # (X@V).T@X@y
 
     # Main loop
     summaries = {}
@@ -87,6 +87,7 @@ def gel_paths(As, y, l_1s, l_2s, l_rs, summ_fun, supp_thresh=1e-6, t_init=None,
     # Form X: which combines all the As and a column of 1s for the bias
     m = As[0].size()[0]
     X = torch.cat([torch.ones(m, 1)] + As, dim=1)
+    X = X.transpose(0, 1) # ridge_paths expects a pxm matrix
     if use_gpu:
         X = X.cuda()
 
