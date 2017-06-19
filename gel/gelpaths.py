@@ -86,6 +86,7 @@ def gel_paths(As, y, l_1s, l_2s, l_rs, summ_fun, supp_thresh=1e-6, t_init=None,
 
     # Form X: which combines all the As and a column of 1s for the bias
     m = As[0].size()[0]
+    ns = [A_j.size()[1] for A_j in As]
     X = torch.cat([torch.ones(m, 1)] + As, dim=1)
     X = X.transpose(0, 1) # ridge_paths expects a pxm matrix
     if use_gpu:
@@ -101,16 +102,17 @@ def gel_paths(As, y, l_1s, l_2s, l_rs, summ_fun, supp_thresh=1e-6, t_init=None,
 
             # Find support
             try:
-                support = torch.nonzero(B.norm(p=2, dim=1) < supp_thresh)[:, 0]
-                # The number above have to be shifted by 1, and the bias index
+                support = (B.norm(p=2, dim=1) >= supp_thresh).expand_as(B)
+                support = torch.cat([s_j[:n_j] for s_j, n_j in
+                                     zip(support, ns)])
+                support = torch.nonzero(support)[:, 0]
+                # The numbers above have to be shifted by 1, and the bias index
                 # needs to be added to the list
                 support = support + 1
                 support = torch.cat([zerot, support])
             except IndexError:
                 # Empty support; only include bias
                 support = zerot
-            if use_gpu:
-                support = support.cuda()
 
             # Solve ridge on support and store summaries
             ridge_summaries = ridge_paths(X, y, support, l_rs, summ_fun)
