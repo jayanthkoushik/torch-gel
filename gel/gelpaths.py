@@ -6,7 +6,7 @@ is used to find the support, and ridge regression is performed on it.
 
 import torch
 
-from gel.gel import gel_solve
+from gel.gel import gel_solve, make_A
 
 
 def ridge_paths(X, y, support, lambdas, summ_fun):
@@ -54,8 +54,8 @@ def ridge_paths(X, y, support, lambdas, summ_fun):
     return summaries
 
 
-def gel_paths(As, y, l_1s, l_2s, l_rs, summ_fun, supp_thresh=1e-6, t_init=None,
-              ls_beta=None, b_init=None, use_gpu=False, max_iters=None,
+def gel_paths(As, y, l_1s, l_2s, l_rs, summ_fun, supp_thresh=1e-6,
+              use_gpu=False, t_init=None, ls_beta=None, max_iters=None,
               rel_tol=1e-6):
     """Solve group elastic net to find support and perform ridge on it.
 
@@ -64,10 +64,12 @@ def gel_paths(As, y, l_1s, l_2s, l_rs, summ_fun, supp_thresh=1e-6, t_init=None,
     summary function.
 
     Arguments:
+        As: list of feature matrices (same as in make_A).
         l_1s, l_2s, l_rs: list of values for l_1, l_2, and l_r respectively.
+        summ_fun: function to summarize results (same as in ridge_paths).
         supp_thresh: for computing support, 2-norms below this value are
             considered 0.
-        summ_fun: function to summarize results (same as in ridge_paths).
+        use_gpu: whether or not to use GPU.
         All other arguments are the same as in gel_solve.
 
     The function returns a dictionary mapping (l_1, l_2, l_r) values to their
@@ -78,26 +80,39 @@ def gel_paths(As, y, l_1s, l_2s, l_rs, summ_fun, supp_thresh=1e-6, t_init=None,
     # be the inner most loop. Further, with l_1^1 > l_1^2 > ..., group elastic
     # net for (l_1^j, l_2) can be solved efficiently by warm starting at the
     # solution for (l_1^{j-1}, l_2). So, l_2s should be the outer most loop.
-    l_1s = sorted(l_1s, reverse=True)
-    summaries = {}
-    zerot = torch.LongTensor([0])
-    if use_gpu:
-        zerot = zerot.cuda()
 
-    # Form X: which combines all the As and a column of 1s for the bias
+    # First compute various required variables
+    l_1s = sorted(l_1s, reverse=True)
+    zerot = torch.LongTensor([0])
+    p = len(As)
     m = As[0].size()[0]
-    ns = [A_j.size()[1] for A_j in As]
+    ns = torch.LongTensor([A_j.size()[1] for A_j in As])
+    B_zeros = torch.zeros(p, ns.max())
+    sns = ns.float().sqrt().unsqueeze(1).expand_as(B_zeros)
+
+    # Form the A matrix as needed by gel_solve
+    A = make_A(As, ns)
+
+    # Form X which combines all the As and a column of 1s for the bias
     X = torch.cat([torch.ones(m, 1)] + As, dim=1)
     X = X.transpose(0, 1) # ridge_paths expects a pxm matrix
+
     if use_gpu:
+        # Move tensors to GPU
+        zerot = zerot.cuda()
+        B_zeros = B_zeros.cuda()
+        ns = ns.cuda()
+        sns = sns.cuda()
+        A = A.cuda()
         X = X.cuda()
 
+    summaries = {}
     for l_2 in l_2s:
-        b_init = None # Reset the initial value for each l_2
+        b_init = 0., B_zeros # Reset the initial value for each l_2
         for l_1 in l_1s:
             # Solve group elastic net initializing at the previous solution
-            b_0, B = gel_solve(As, y, l_1, l_2, t_init, ls_beta, b_init,
-                               use_gpu, max_iters, rel_tol)
+            b_0, B = gel_solve(A, y, l_1, l_2, m, p, sns, b_init, t_init,
+                               ls_beta, max_iters, rel_tol)
             b_init = b_0, B
 
             # Find support

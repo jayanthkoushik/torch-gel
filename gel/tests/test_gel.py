@@ -6,14 +6,11 @@ import torch
 import cvxpy as cvx
 import numpy as np
 
-from gel.gel import gel_solve
+from gel.gel import gel_solve, make_A
 
 
 def gel_solve_cvx(As, y, l_1, l_2):
-    """Solve a group elastic net problem with cvx.
-
-    Arguments have the same meaning as in gel_solve.
-    """
+    """Solve a group elastic net problem with cvx."""
     # Convert torch tensors to numpy arrays
     As = [As_j.numpy() for As_j in As]
     y = y.numpy()
@@ -81,12 +78,17 @@ class TestGel(unittest.TestCase):
             A_j = X[:, groups[j]]
             As.append(torch.FloatTensor(A_j))
         yt = torch.FloatTensor(y)
+        ns = torch.LongTensor([len(g) for g in groups])
+        B_zeros = torch.zeros(p, ns.max())
+        b_init = 0., B_zeros
+        sns = ns.float().sqrt().unsqueeze(1).expand_as(B_zeros)
+        A = make_A(As, ns)
 
         # Solve with both methods
         for method in ["self", "cvx"]:
             if method == "self":
-                b_0, B = gel_solve(As, yt, l_1, l_2, t_init, ls_beta,
-                                   max_iters=1000, rel_tol=0)
+                b_0, B = gel_solve(A, yt, l_1, l_2, m, p, sns, b_init, t_init,
+                                   ls_beta, max_iters=1000, rel_tol=0)
             else:
                 b_0, B = gel_solve_cvx(As, yt, l_1, l_2)
 

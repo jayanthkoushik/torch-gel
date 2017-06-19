@@ -86,58 +86,49 @@ def _grad(A, b_0, B, y, p, m):
     return grad_b_0, grad_B
 
 
-def gel_solve(As, y, l_1, l_2, t_init=None, ls_beta=None, b_init=None,
-              use_gpu=False, max_iters=None, rel_tol=1e-6):
+def make_A(As, ns):
+    """Create the 3D tensor A as needed by gel_solve, given a list of feature
+        matrices.
+
+    Arguments:
+        As: list of feature matrices, one per group (size mxn_j).
+        ns: LongTensor of group sizes.
+    """
+    A = torch.zeros(len(ns), ns.max(), As[0].size()[0])
+    for j, n_j in enumerate(ns):
+        A_j = As[j]
+        A[j, :n_j, :] = A_j.transpose(1, 0)
+    return A
+
+
+def gel_solve(A, y, l_1, l_2, m, p, sns, b_init, t_init=None, ls_beta=None,
+              max_iters=None, rel_tol=1e-6):
     """Solve a group elastic net problem.
 
     Arguments:
-        As: list of feature matrices, one per group (size m x n_j).
+        A: 3D tensor of features as described in the header.
         y: vector of predictions.
         l_1: the 2-norm coefficient.
         l_2: the squared 2-norm coefficient.
+        m: number of samples.
+        p: number of groups.
+        sns: tensor with square root of group sizes, broadcasted to the shape
+            of B.
+        b_init: tuple (b_0, B) to initialize b.
         t_init: initial step size to start line search; if None, it's set to
             the value from the previous iteration.
         ls_beta: shrinkage factor for line search; if None, no line search is
             performed, and t_init is used as the step size for every iteration.
-        b_init: tuple (b_0, B) to initialize b.
-        use_gpu: whether or not to move tensors to GPU.
         max_iters: maximum number of iterations; if None, there is no limit.
         rel_tol: tolerance for exit criterion.
     """
-    # First compute needed variables
-    p = len(As)
-    m = As[0].size()[0]
-    ns = torch.LongTensor([A_j.size()[1] for A_j in As])
-    if use_gpu:
-        ns = ns.cuda()
-    max_n_j = ns.max()
-
-    # Form the A matrix as needed
-    A = torch.zeros(p, max_n_j, m)
-    if use_gpu:
-        A = A.cuda()
-    for j in range(p):
-        A_j = As[j]
-        n_j = ns[j]
-        A[j, :n_j, :] = A_j.transpose(1, 0)
-
-    # Intialize b
-    if b_init is not None:
-        b_0, B = b_init
-    else:
-        b_0, B = 0., torch.zeros(p, max_n_j)
-    if use_gpu:
-        B = B.cuda()
-
-    # Compute a_1, a_2
-    sns = ns.float().sqrt().unsqueeze(1)
-    a_1 = (l_1*sns).expand_as(B)
-    a_2 = (2*l_2*sns).expand_as(B)
-
-    # Start the optimization
+    a_1 = l_1*sns
+    a_2 = 2*l_2*sns
+    b_0, B = b_init
     b_0_prev, B_prev = b_0, B
     k = 1 # Iteration number
     t = 1 # Initial step length (used if t_init is None)
+
     while True:
         # Compute the v terms
         mom = (k - 2) / (k + 1.)
