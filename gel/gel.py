@@ -14,18 +14,17 @@ and the second part by h, the algorithm can be written as
     b^k = prox_{t_k}(v - t_k*grad(g(v)))
 
 Here t_k is a step length chosen by backtracking line search,
-and prox is the proximal operator.
+and prox is the proximal operator of h.
 
 The functions in this module use certain variables and conventions.
 These will be defined next.
 
 The coefficients are represented using a scalar bias b_0 and a matrix
 B where each row corresponds to a single group (with appropriate 0 padding).
-The root of the group sizes are stored in a vector sns. The features are
-stored in a 3D tensor A of size #groups x max{n_j} x m.
-
-a_1 = l_1*sns (broadcasted to the shape of B)
-a_2 = 2*l_2*sns (also broadcasted to the shape of B)
+The root of the group sizes are stored in a matrix sns broadcasted to the
+shape of B. The features are stored in a 3D tensor A of size
+#groups x max{n_j} x m. Two helper variables are used: a_1 = l_1*sns,
+and a_2 = 2*l_2*sns.
 """
 
 import torch
@@ -77,7 +76,11 @@ def _g(A, b_0, B, y, m):
 
 
 def _grad(A, b_0, B, y, p, m):
-    """Compute the gradient of g."""
+    """Compute the gradient of g.
+
+    The gradient for b_0 is 1.T@r / -m, and the gradient for b_j is
+    A_j.T@r / -m.
+    """
     r = _r(A, b_0, B, y)
     grad_b_0 = r.sum() / -m
     # r must be broadcasted for the next operation
@@ -96,6 +99,7 @@ def make_A(As, ns):
     """
     A = torch.zeros(len(ns), ns.max(), As[0].size()[0])
     for j, n_j in enumerate(ns):
+        # Fill A[j] with A_j.T
         A_j = As[j]
         A[j, :n_j, :] = A_j.transpose(1, 0)
     return A
@@ -106,14 +110,15 @@ def gel_solve(A, y, l_1, l_2, m, p, sns, b_init, t_init=None, ls_beta=None,
     """Solve a group elastic net problem.
 
     Arguments:
-        A: 3D tensor of features as described in the header.
-        y: vector of predictions.
+        A: 3D FloatTensor of features as described in the header,
+            returned by make_A.
+        y: FloatTensor vector of predictions.
         l_1: the 2-norm coefficient.
         l_2: the squared 2-norm coefficient.
         m: number of samples.
         p: number of groups.
-        sns: tensor with square root of group sizes, broadcasted to the shape
-            of B.
+        sns: FloatTensor with square root of group sizes, broadcasted to the
+            shape of B (p x max{n_j}).
         b_init: tuple (b_0, B) to initialize b.
         t_init: initial step size to start line search; if None, it's set to
             the value from the previous iteration.

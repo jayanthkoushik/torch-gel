@@ -101,8 +101,10 @@ class TestGel(unittest.TestCase):
             r = y - b_0 - X@b
             g_b = r@r / (2.*m)
             b_j_norms = [np.linalg.norm(b[groups[j]], ord=2) for j in range(p)]
-            h_b = l_1 * sum(b_j_norms[j]*np.sqrt(len(groups[j]))
+            h_b = l_1 * sum(np.sqrt(len(groups[j]))*b_j_norms[j]
                             for j in range(p))
+            h_b += l_2 * sum(np.sqrt(len(groups[j]))*(b_j_norms[j]**2)
+                             for j in range(p))
             if method == "self":
                 self_obj = g_b + h_b
                 self_b = b

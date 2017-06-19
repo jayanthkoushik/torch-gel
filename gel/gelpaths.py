@@ -1,6 +1,6 @@
 """gelpaths.py: solution paths for group elastic net.
 
-This module also implements a 2-stage process where group elastic net
+This module implements a 2-stage process where group elastic net
 is used to find the support, and ridge regression is performed on it.
 """
 
@@ -14,11 +14,12 @@ def ridge_paths(X, y, support, lambdas, summ_fun):
     and return the summary for each.
 
     The multiple solutions are obtained efficiently using the Woodbury
-    identity. The ridge solution is given by
+    identity. With X (p x m) representing the feature matrix, and y (m x 1)
+    the outcomes, the ridge solution is given by
 
         b = (X@X.T + l*I)^{-1}@X@y
 
-    This can be reduced to
+    where l is the regularization coefficient. This can be reduced to
 
         (1/l)*(X@y - X@V(e + l*I)^{-1}@(X@V).T@X@y)
 
@@ -29,14 +30,16 @@ def ridge_paths(X, y, support, lambdas, summ_fun):
     multiplication.
 
     Arguments:
-        X: pxm matrix of features (where m is the number of samples)
-        y: m-vector of outcomes.
-        support: LongTensor of features from X to use.
+        X: pxm FloatTensor of features (where m is the number of samples)
+        y: FloatTensor (length m vector) of outcomes.
+        support: LongTensor vector of features from X to use. This vector
+            should contain indices. These dimensions of X will be used for
+            the regression.
         lambdas: list of regularization values for which to solve the problem.
         summ_fun: a function that takes (support, b) and returns an arbitrary
             summary.
 
-    The funciton returns a dictionary mapping lambda values to their summaries.
+    The function returns a dictionary mapping lambda values to their summaries.
     """
     # Setup
     X = X[support]
@@ -105,6 +108,7 @@ def gel_paths(As, y, l_1s, l_2s, l_rs, summ_fun, supp_thresh=1e-6,
         sns = sns.cuda()
         A = A.cuda()
         X = X.cuda()
+        y = y.cuda()
 
     summaries = {}
     for l_2 in l_2s:
