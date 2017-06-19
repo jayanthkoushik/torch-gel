@@ -17,7 +17,7 @@ class TestGelPaths(unittest.TestCase):
         # Setup
         X = torch.rand(10, 20)
         y = torch.rand(10)
-        support = range(20)
+        support = torch.LongTensor(range(20))
         lambdas = [0.1, 0.2, 0.3, 0.4, 0.5]
         summ_fun = lambda support, b: b
 
