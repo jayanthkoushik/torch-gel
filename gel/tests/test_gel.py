@@ -70,8 +70,6 @@ class TestGel(unittest.TestCase):
         m = 189
         l_1 = 4. / (2*m)
         l_2 = 0.5 / (2*m)
-        t_init = 0.1
-        ls_beta = 0.9
 
         # Covert to gel format
         As = []
@@ -88,9 +86,9 @@ class TestGel(unittest.TestCase):
         # Solve with both methods
         for method in ["self", "cvx"]:
             if method == "self":
-                b_0, B = gel_solve_fista(A, yt, l_1, l_2, m, p, sns, b_init,
-                                         t_init, ls_beta, max_iters=1000,
-                                         rel_tol=0)
+                b_0, B = gel_solve_fista(A, yt, l_1, l_2, sns, b_init,
+                                         t_init=0.1, ls_beta=0.9,
+                                         max_iters=1000, rel_tol=0)
             else:
                 b_0, B = gel_solve_cvx(As, yt, l_1, l_2)
 

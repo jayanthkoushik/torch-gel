@@ -55,9 +55,8 @@ def ridge_paths(X, y, support, lambdas, summ_fun):
     return summaries
 
 
-def gel_paths(gel_solve, make_A, As, y, l_1s, l_2s, l_rs, summ_fun,
-              supp_thresh=1e-6, use_gpu=False, t_init=None, ls_beta=None,
-              max_iters=None, rel_tol=1e-6):
+def gel_paths(gel_solve, gel_solve_kwargs, make_A, As, y, l_1s, l_2s, l_rs,
+              summ_fun, supp_thresh=1e-6, use_gpu=False):
     """Solve group elastic net to find support and perform ridge on it.
 
     The problem is solved for multiple values of l_1, l_2, and l_r (the ridge
@@ -67,13 +66,14 @@ def gel_paths(gel_solve, make_A, As, y, l_1s, l_2s, l_rs, summ_fun,
     Arguments:
         gel_solve, make_A: functions from a gel implementation to be used
             internally.
+        gel_solve_kwargs: dictionary of keyword arguments to be passed to
+            gel_solve.
         As: list of feature matrices (same as in make_A).
         l_1s, l_2s, l_rs: list of values for l_1, l_2, and l_r respectively.
         summ_fun: function to summarize results (same as in ridge_paths).
         supp_thresh: for computing support, 2-norms below this value are
             considered 0.
         use_gpu: whether or not to use GPU.
-        All other arguments are the same as in gel_solve.
 
     The function returns a dictionary mapping (l_1, l_2, l_r) values to their
     summaries.
@@ -115,8 +115,7 @@ def gel_paths(gel_solve, make_A, As, y, l_1s, l_2s, l_rs, summ_fun,
         b_init = 0., B_zeros # Reset the initial value for each l_2
         for l_1 in l_1s:
             # Solve group elastic net initializing at the previous solution
-            b_0, B = gel_solve(A, y, l_1, l_2, m, p, sns, b_init, t_init,
-                               ls_beta, max_iters, rel_tol)
+            b_0, B = gel_solve(A, y, l_1, l_2, sns, b_init, **gel_solve_kwargs)
             b_init = b_0, B
 
             # Find support
