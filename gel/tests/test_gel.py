@@ -1,4 +1,4 @@
-"""test_gel.py: framework to test the gel module."""
+"""test_gel.py: framework to test gel implementations."""
 
 import unittest
 
@@ -6,7 +6,8 @@ import torch
 import cvxpy as cvx
 import numpy as np
 
-from gel.gel import gel_solve, make_A
+from gel.gelfista import gel_solve as gel_solve_fista
+from gel.gelfista import make_A as make_A_fista
 
 
 def gel_solve_cvx(As, y, l_1, l_2):
@@ -54,7 +55,7 @@ def gel_solve_cvx(As, y, l_1, l_2):
 
 class TestGel(unittest.TestCase):
 
-    """Test functions for gel_solve."""
+    """Test functions for different gel_solve implementations."""
 
     def test_gel_birthwt(self):
         """Test with the birth weight data."""
@@ -82,13 +83,14 @@ class TestGel(unittest.TestCase):
         B_zeros = torch.zeros(p, ns.max())
         b_init = 0., B_zeros
         sns = ns.float().sqrt().unsqueeze(1).expand_as(B_zeros)
-        A = make_A(As, ns)
+        A = make_A_fista(As, ns)
 
         # Solve with both methods
         for method in ["self", "cvx"]:
             if method == "self":
-                b_0, B = gel_solve(A, yt, l_1, l_2, m, p, sns, b_init, t_init,
-                                   ls_beta, max_iters=1000, rel_tol=0)
+                b_0, B = gel_solve_fista(A, yt, l_1, l_2, m, p, sns, b_init,
+                                         t_init, ls_beta, max_iters=1000,
+                                         rel_tol=0)
             else:
                 b_0, B = gel_solve_cvx(As, yt, l_1, l_2)
 

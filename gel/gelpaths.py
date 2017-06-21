@@ -6,8 +6,6 @@ is used to find the support, and ridge regression is performed on it.
 
 import torch
 
-from gel.gel import gel_solve, make_A
-
 
 def ridge_paths(X, y, support, lambdas, summ_fun):
     """Solve ridge ridgression for a sequence of regularization values,
@@ -57,9 +55,9 @@ def ridge_paths(X, y, support, lambdas, summ_fun):
     return summaries
 
 
-def gel_paths(As, y, l_1s, l_2s, l_rs, summ_fun, supp_thresh=1e-6,
-              use_gpu=False, t_init=None, ls_beta=None, max_iters=None,
-              rel_tol=1e-6):
+def gel_paths(gel_solve, make_A, As, y, l_1s, l_2s, l_rs, summ_fun,
+              supp_thresh=1e-6, use_gpu=False, t_init=None, ls_beta=None,
+              max_iters=None, rel_tol=1e-6):
     """Solve group elastic net to find support and perform ridge on it.
 
     The problem is solved for multiple values of l_1, l_2, and l_r (the ridge
@@ -67,6 +65,8 @@ def gel_paths(As, y, l_1s, l_2s, l_rs, summ_fun, supp_thresh=1e-6,
     summary function.
 
     Arguments:
+        gel_solve, make_A: functions from a gel implementation to be used
+            internally.
         As: list of feature matrices (same as in make_A).
         l_1s, l_2s, l_rs: list of values for l_1, l_2, and l_r respectively.
         summ_fun: function to summarize results (same as in ridge_paths).

@@ -1,4 +1,4 @@
-"""gel.py: main package file; group elastic net implementation.
+"""gelfista.py: FISTA like algorithm for group elastic net.
 
 This implementation uses accelerated proximal gradient descent to
 solve the optimization problem:
