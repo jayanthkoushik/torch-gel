@@ -105,7 +105,7 @@ def make_A(As, ns):
     return A
 
 
-def gel_solve(A, y, l_1, l_2, sns, b_init, t_init=None, ls_beta=None,
+def gel_solve(A, y, l_1, l_2, ns, b_init, t_init=None, ls_beta=None,
               max_iters=None, rel_tol=1e-6):
     """Solve a group elastic net problem.
 
@@ -115,8 +115,7 @@ def gel_solve(A, y, l_1, l_2, sns, b_init, t_init=None, ls_beta=None,
         y: FloatTensor vector of predictions.
         l_1: the 2-norm coefficient.
         l_2: the squared 2-norm coefficient.
-        sns: FloatTensor with square root of group sizes, broadcasted to the
-            shape of B (p x max{n_j}).
+        ns: LongTensor of group sizes.
         b_init: tuple (b_0, B) to initialize b.
         t_init: initial step size to start line search; if None, it's set to
             the value from the previous iteration.
@@ -125,12 +124,13 @@ def gel_solve(A, y, l_1, l_2, sns, b_init, t_init=None, ls_beta=None,
         max_iters: maximum number of iterations; if None, there is no limit.
         rel_tol: tolerance for exit criterion.
     """
-    m = len(y)
-    p = len(sns)
-    a_1 = l_1*sns
-    a_2 = 2*l_2*sns
     b_0, B = b_init
     b_0_prev, B_prev = b_0, B
+    sns = ns.float().sqrt().unsqueeze(1).expand_as(B)
+    p = len(sns)
+    m = len(y)
+    a_1 = l_1*sns
+    a_2 = 2*l_2*sns
     k = 1 # Iteration number
     t = 1 # Initial step length (used if t_init is None)
 
