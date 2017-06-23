@@ -28,7 +28,6 @@ and a_2 = 2*l_2*sns.
 """
 
 import torch
-import numpy as np
 
 
 def _prox(B, a_1, a_2, t):
@@ -182,9 +181,9 @@ def gel_solve(A, y, l_1, l_2, ns, b_init, t_init=None, ls_beta=None,
         # b_prev is less than tol
         b_0_diff = b_0 - b_0_prev
         B_diff = B - B_prev
-        delta_norm = np.sqrt(b_0_diff**2 + (B_diff**2).sum())
-        b_norm = np.sqrt(b_0**2 + (B**2).sum())
-        if delta_norm < rel_tol * b_norm:
+        delta_norm = (b_0_diff**2 + (B_diff**2).sum(dim=0).sum(dim=1)).sqrt()
+        b_norm = (b_0**2 + (B**2).sum(dim=0).sum(dim=1)).sqrt()
+        if (delta_norm < rel_tol * b_norm)[0, 0]:
             break
 
     return b_0, B

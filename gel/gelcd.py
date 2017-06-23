@@ -31,18 +31,14 @@ in group j. For any j, r_j = y - b_0 - sum_{k =/= j} A_k@b_k, and
 q_j = r_j - A_j@b_j. Finally, a_1 = l_1*sns and a_2 = 2*l_2*sns.
 """
 
-import torch
-
-import numpy as np
-
 
 def _f_j(q_j, b_j, a_1_j, a_2_j, m):
     """Compute the objective with respect to one of the coefficients i.e.
 
         (1/2m)||q_j||^2 + a_1||b_j|| + (a_2/2)||b_j||^2
     """
-    b_j_norm2 = b_j@b_j
-    return (q_j@q_j)/(2.*m) + a_1_j*np.sqrt(b_j_norm2) + (a_2_j/2.)*b_j_norm2
+    b_j_norm = b_j.norm(p=2)
+    return (q_j@q_j)/(2.*m) + a_1_j*b_j_norm + (a_2_j/2.)*(b_j_norm**2)
 
 
 def _grad_j(q_j, A_j, b_j, a_1_j, a_2_j, m):
@@ -94,8 +90,8 @@ def block_solve_agd(r_j, A_j, a_1_j, a_2_j, m, b_j_init, t_init=None,
                 t *= ls_beta
 
         # Make b_j non-zero if it is 0
-        if np.allclose(b_j.numpy(), 0):
-            b_j += 1e-3
+        if len((b_j.abs() < 1e-3).nonzero()) == len(b_j):
+            b_j.fill_(1e-3)
 
         # Check max iterations exit criterion
         if max_iters is not None and k == max_iters:
@@ -153,7 +149,7 @@ def gel_solve(A, y, l_1, l_2, ns, b_init, block_solve_fun=block_solve_agd,
         # First minimize with respect to b_0. This has a closed form solution
         # given by
         #   b_0 = 1.T@(y - sum_j A_j@b_j) / m
-        b_0 = torch.sum(y - sum(A[j]@B[j, :ns[j]] for j in range(p))) / m
+        b_0 = (y - sum(A[j]@B[j, :ns[j]] for j in range(p))).sum() / m
 
         # Now, miinimize with respect to each b_j
         for j in range(p):
@@ -167,8 +163,8 @@ def gel_solve(A, y, l_1, l_2, ns, b_init, block_solve_fun=block_solve_agd,
             else:
                 # Otherwise, minimize
                 # First make sure initial value is not 0
-                if np.allclose(B[j, :ns[j]].numpy(), 0):
-                    B[j, :ns[j]] += 1e-3
+                if len((B[j, :ns[j]].abs() < 1e-3).nonzero()) == ns[j]:
+                    B[j, :ns[j]] = 1e-3
                 B[j, :ns[j]] = block_solve_fun(r_j, A[j], a_1[j], a_2[j], m,
                                                B[j, :ns[j]],
                                                **block_solve_kwargs)
@@ -181,9 +177,9 @@ def gel_solve(A, y, l_1, l_2, ns, b_init, block_solve_fun=block_solve_agd,
         # Check tolerance exit criterion
         b_0_diff = b_0 - b_0_prev
         B_diff = B - B_prev
-        delta_norm = np.sqrt(b_0_diff**2 + (B_diff**2).sum())
-        b_norm = np.sqrt(b_0**2 + (B**2).sum())
-        if delta_norm < rel_tol * b_norm:
+        delta_norm = (b_0_diff**2 + (B_diff**2).sum(dim=0).sum(dim=1)).sqrt()
+        b_norm = (b_0**2 + (B**2).sum(dim=0).sum(dim=1)).sqrt()
+        if (delta_norm < rel_tol * b_norm)[0, 0]:
             break
         b_0_prev, B_prev = b_0, B
 
