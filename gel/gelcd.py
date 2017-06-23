@@ -119,7 +119,7 @@ def block_solve_agd(r_j, A_j, a_1_j, a_2_j, m, b_j_init, t_init=None,
                 t *= ls_beta
 
         # Make b_j non-zero if it is 0
-        if len((b_j.abs() < 1e-3).nonzero()) == len(b_j):
+        if len((b_j.abs() < 1e-6).nonzero()) == len(b_j):
             b_j.fill_(1e-3)
 
         # Check max iterations exit criterion
@@ -193,7 +193,7 @@ def gel_solve(A, y, l_1, l_2, ns, b_init, block_solve_fun=block_solve_agd,
             else:
                 # Otherwise, minimize
                 # First make sure initial value is not 0
-                if len((B[j, :ns[j]].abs() < 1e-3).nonzero()) == ns[j]:
+                if len((B[j, :ns[j]].abs() < 1e-6).nonzero()) == ns[j]:
                     B[j, :ns[j]] = 1e-3
                 B[j, :ns[j]] = block_solve_fun(r_j, A[j], a_1[j], a_2[j], m,
                                                B[j, :ns[j]],
