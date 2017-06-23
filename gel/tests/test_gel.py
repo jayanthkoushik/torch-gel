@@ -10,29 +10,27 @@ from gel.gelfista import gel_solve as gel_solve_fista
 from gel.gelfista import make_A as make_A_fista
 from gel.gelcd import gel_solve as gel_solve_cd
 from gel.gelcd import make_A as make_A_cd
-from gel.gelcd import block_solve_agd
+from gel.gelcd import block_solve_cvx, block_solve_agd
 
 
-def make_A_cvx(As, ns):
-    """Convert As to a list of numpy arrays as needed by cvx."""
-    return [As_j.numpy() for As_j in As]
+def gel_solve_cvx(As, y, l_1, l_2, ns):
+    """Solve a group elastic net problem with cvx.
 
-
-def gel_solve_cvx(A, y, l_1, l_2, ns, b_init):
-    """Solve a group elastic net problem with cvx."""
-    # Convert y and ns to numpy array
-    y = y.numpy()
-    ns = ns.numpy()
-
+    Arguments:
+        As: list of numpy arrays.
+        y: numpy array.
+        l_1, l_2: floats.
+        ns: numpy array.
+    """
     # Create the b variables
     b_0 = cvx.Variable()
     bs = []
-    for A_j, n_j in zip(A, ns):
+    for A_j, n_j in zip(As, ns):
         bs.append(cvx.Variable(n_j))
 
     # Form g(b)
-    Ab = sum(A_j*b_j for A_j, b_j in zip(A, bs))
-    m = A[0].shape[0]
+    Ab = sum(A_j*b_j for A_j, b_j in zip(As, bs))
+    m = As[0].shape[0]
     g_b = cvx.square(cvx.norm2(y - b_0 - Ab)) / (2*m)
 
     # Form h(b)
@@ -47,7 +45,7 @@ def gel_solve_cvx(A, y, l_1, l_2, ns, b_init):
 
     b_0 = b_0.value
     # Form B as returned by gel_solve
-    p = len(A)
+    p = len(As)
     B = torch.zeros(p, int(max(ns)))
     for j in range(p):
         b_j = np.asarray(bs[j].value)
@@ -58,133 +56,95 @@ def gel_solve_cvx(A, y, l_1, l_2, ns, b_init):
     return b_0, B
 
 
-def block_solve_cvx(r_j, A_j, a_1_j, a_2_j, m, b_j_init):
-    """Solve the single block optimization problem from gelcd."""
-    # Convert everything to numpy
-    r_j = r_j.numpy()
-    A_j = A_j.numpy()
-
-    # Create the b_j variable
-    b_j = cvx.Variable(A_j.shape[1])
-
-    # Form the objective
-    q_j = r_j - A_j*b_j
-    obj_fun = cvx.square(cvx.norm2(q_j)) / (2.*m)
-    obj_fun += a_1_j*cvx.norm2(b_j) + (a_2_j/2.)*cvx.square(cvx.norm2(b_j))
-
-    # Build the optimization problem
-    obj = cvx.Minimize(obj_fun)
-    problem = cvx.Problem(obj, constraints=None)
-
-    problem.solve(solver="CVXOPT")
-    b_j = np.asarray(b_j.value)
-    if A_j.shape[1] == 1:
-        b_j = b_j.reshape(1,)
-    return torch.FloatTensor(b_j)
+def _b2vec(B, groups):
+    """Convert B as returned by gel_solve functions to a single numpy vector."""
+    d = sum(len(group_j) for group_j in groups) # The total dimension
+    b = np.zeros(d)
+    for j, group_j in enumerate(groups):
+        b[group_j] = B[j, :len(group_j)].numpy()
+    return b
 
 
-class TestGel(unittest.TestCase):
+class TestGelBirthwt(unittest.TestCase):
 
-    """Test functions for different gel_solve implementations."""
+    """Test different gel_solve implementations with the birth weight data."""
 
-    def test_gel_birthwt(self):
-        """Test with the birth weight data."""
-        # Load data
-        X = np.loadtxt("data/birthwt/X.csv", skiprows=1, delimiter=",")
-        y = np.loadtxt("data/birthwt/y.csv", skiprows=1)
-        groups = [[0, 1, 2], [3, 4, 5], [6, 7], [8], [9, 10], [11], [12],
-                  [13, 14, 15]]
+    def __init__(self, *args, **kwargs):
+        """Load data and solve with cvx to get ground truth solution."""
+        super().__init__(*args, **kwargs)
+        self.X = np.loadtxt("data/birthwt/X.csv", skiprows=1, delimiter=",")
+        self.y = np.loadtxt("data/birthwt/y.csv", skiprows=1)
+        self.groups = [[0, 1, 2], [3, 4, 5], [6, 7], [8], [9, 10], [11], [12],
+                       [13, 14, 15]]
+        self.p = len(self.groups)
+        self.m = len(self.y)
+        self.l_1 = 4. / (2*self.m)
+        self.l_2 = 0.5 / (2*self.m)
 
-        # Declare parameters
-        p = len(groups)
-        m = 189
-        l_1 = 4. / (2*m)
-        l_2 = 0.5 / (2*m)
+        # Convert things to gel format
+        self.As = []
+        for j in range(self.p):
+            A_j = self.X[:, self.groups[j]]
+            self.As.append(torch.FloatTensor(A_j))
+        self.yt = torch.FloatTensor(self.y)
+        self.ns = torch.LongTensor([len(g) for g in self.groups])
 
-        # Covert to gel formats
-        As = []
-        for j in range(p):
-            A_j = X[:, groups[j]]
-            As.append(torch.FloatTensor(A_j))
-        yt = torch.FloatTensor(y)
-        ns = torch.LongTensor([len(g) for g in groups])
-        B_zeros = torch.zeros(p, ns.max())
-        b_init = 0., B_zeros
+        # Solve with cvx
+        As_cvx = [A_j.numpy() for A_j in self.As]
+        self.b_0_cvx, B = gel_solve_cvx(As_cvx, self.y, self.l_1, self.l_2,
+                                        self.ns.numpy())
+        self.b_cvx = _b2vec(B, self.groups)
+        self.obj_cvx = self._obj(self.b_0_cvx, self.b_cvx)
 
-        # Declare parameters for the different methods
-        method_data = {
-            "fista": {
-                "make_A": make_A_fista,
-                "gel_solve": gel_solve_fista,
-                "gel_solve_kwargs": {
-                    "t_init": 0.1,
-                    "ls_beta": 0.9,
-                    "max_iters": 1000,
-                    "rel_tol": 0
-                }
-            },
-            "cd_cvx": {
-                "make_A": make_A_cd,
-                "gel_solve": gel_solve_cd,
-                "gel_solve_kwargs": {
-                    "block_solve_fun": block_solve_cvx,
-                    "block_solve_kwargs": {},
-                    "rel_tol": 1e-6
-                }
-            },
-            "cd_agd": {
-                "make_A": make_A_cd,
-                "gel_solve": gel_solve_cd,
-                "gel_solve_kwargs": {
-                    "block_solve_fun": block_solve_agd,
-                    "block_solve_kwargs": {
-                        "t_init": 0.1,
-                        "ls_beta": 0.9,
-                        "max_iters": None,
-                        "tol": 1e-4
-                    },
-                    "rel_tol": 1e-6
-                }
-            },
-            "cvx": {
-                "make_A": make_A_cvx,
-                "gel_solve": gel_solve_cvx,
-                "gel_solve_kwargs": {}
-            }
-        }
+    def _obj(self, b_0, b):
+        """Compute the objective function value for the given b_0, b."""
+        r = self.y - b_0 - self.X@b
+        g_b = r@r / (2.*self.m)
+        b_j_norms = [np.linalg.norm(b[self.groups[j]], ord=2)
+                     for j in range(self.p)]
+        h_b = self.l_1 * sum(np.sqrt(len(self.groups[j]))*b_j_norms[j]
+                             for j in range(self.p))
+        h_b += self.l_2 * sum(np.sqrt(len(self.groups[j]))*(b_j_norms[j]**2)
+                              for j in range(self.p))
+        return g_b + h_b
 
-        # Solve with all methods
-        for method in method_data:
-            make_A = method_data[method]["make_A"]
-            gel_solve = method_data[method]["gel_solve"]
-            gel_solve_kwargs = method_data[method]["gel_solve_kwargs"]
+    def _compare_to_cvx(self, b_0, b, obj):
+        """Compare the given solution to the cvx solution."""
+        self.assertTrue(np.allclose(obj, self.obj_cvx))
+        self.assertTrue(np.allclose(b_0, self.b_0_cvx, atol=1e-4, rtol=1e-3))
+        self.assertTrue(np.allclose(b, self.b_cvx, atol=1e-4, rtol=1e-3))
 
-            A = make_A(As, ns)
-            b_0, B = gel_solve(A, yt, l_1, l_2, ns, b_init, **gel_solve_kwargs)
+    def _test_implementation(self, make_A, gel_solve, **gel_solve_kwargs):
+        """Test the given implementation."""
+        A = make_A(self.As, self.ns)
+        b_0, B = gel_solve(A, self.yt, self.l_1, self.l_2, self.ns, self.b_init,
+                           **gel_solve_kwargs)
+        b = _b2vec(B, self.groups)
+        obj = self._obj(b_0, b)
+        self._compare_to_cvx(b_0, b, obj)
 
-            # Convert B to a vector
-            b = np.zeros(X.shape[1])
-            for j in range(p):
-                b[groups[j]] = B[j, :len(groups[j])].numpy()
+    def setUp(self):
+        self.b_init = 0., torch.zeros(self.p, self.ns.max())
 
-            # Compute objective
-            r = y - b_0 - X@b
-            g_b = r@r / (2.*m)
-            b_j_norms = [np.linalg.norm(b[groups[j]], ord=2) for j in range(p)]
-            h_b = l_1 * sum(np.sqrt(len(groups[j]))*b_j_norms[j]
-                            for j in range(p))
-            h_b += l_2 * sum(np.sqrt(len(groups[j]))*(b_j_norms[j]**2)
-                             for j in range(p))
+    def test_fista(self):
+        """Test the FISTA implementation of gel_solve."""
+        self._test_implementation(make_A_fista, gel_solve_fista, t_init=0.1,
+                                  ls_beta=0.9, max_iters=None, rel_tol=1e-6)
 
-            method_data[method]["obj"] = g_b + h_b
-            method_data[method]["b"] = b
+    def test_cd_cvx(self):
+        """Test the CD implementation with cvx internal solver."""
+        self._test_implementation(make_A_cd, gel_solve_cd,
+                                  block_solve_fun=block_solve_cvx,
+                                  block_solve_kwargs={}, max_cd_iters=None,
+                                  rel_tol=1e-6)
 
-        # Compare implemented methods to cvx
-        for method in method_data:
-            if method == "cvx":
-                continue
-            self.assertTrue(np.allclose(method_data[method]["obj"],
-                                        method_data["cvx"]["obj"]))
-            self.assertTrue(np.allclose(method_data[method]["b"],
-                                        method_data["cvx"]["b"],
-                                        atol=1e-4, rtol=1e-3))
+    def test_cd_agd(self):
+        """Test the CD implementation with AGD internal solver."""
+        self._test_implementation(make_A_cd, gel_solve_cd,
+                                  block_solve_fun=block_solve_agd,
+                                  block_solve_kwargs={
+                                      "t_init": 0.1,
+                                      "ls_beta": 0.9,
+                                      "max_iters": None,
+                                      "rel_tol": 1e-6
+                                  }, max_cd_iters=None, rel_tol=1e-6)

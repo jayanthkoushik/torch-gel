@@ -31,6 +31,10 @@ in group j. For any j, r_j = y - b_0 - sum_{k =/= j} A_k@b_k, and
 q_j = r_j - A_j@b_j. Finally, a_1 = l_1*sns and a_2 = 2*l_2*sns.
 """
 
+import torch
+import cvxpy as cvx
+import numpy as np
+
 
 def _f_j(q_j, b_j, a_1_j, a_2_j, m):
     """Compute the objective with respect to one of the coefficients i.e.
@@ -46,8 +50,33 @@ def _grad_j(q_j, A_j, b_j, a_1_j, a_2_j, m):
     return A_j.transpose(0, 1)@q_j/(-m) + b_j*(a_1_j/b_j.norm(p=2) + a_2_j)
 
 
+def block_solve_cvx(r_j, A_j, a_1_j, a_2_j, m, b_j_init):
+    """Solve the optimization problem for a single block with cvx."""
+    # Convert everything to numpy
+    r_j = r_j.numpy()
+    A_j = A_j.numpy()
+
+    # Create the b_j variable
+    b_j = cvx.Variable(A_j.shape[1])
+
+    # Form the objective
+    q_j = r_j - A_j*b_j
+    obj_fun = cvx.square(cvx.norm2(q_j)) / (2.*m)
+    obj_fun += a_1_j*cvx.norm2(b_j) + (a_2_j/2.)*cvx.square(cvx.norm2(b_j))
+
+    # Build the optimization problem
+    obj = cvx.Minimize(obj_fun)
+    problem = cvx.Problem(obj, constraints=None)
+
+    problem.solve(solver="CVXOPT")
+    b_j = np.asarray(b_j.value)
+    if A_j.shape[1] == 1:
+        b_j = b_j.reshape(1,)
+    return torch.FloatTensor(b_j)
+
+
 def block_solve_agd(r_j, A_j, a_1_j, a_2_j, m, b_j_init, t_init=None,
-                    ls_beta=None, max_iters=None, tol=1e-4):
+                    ls_beta=None, max_iters=None, rel_tol=1e-6):
     """Solve the optimization problem for a single block with accelerated
     gradient descent."""
     b_j = b_j_init
@@ -99,9 +128,10 @@ def block_solve_agd(r_j, A_j, a_1_j, a_2_j, m, b_j_init, t_init=None,
         k += 1
 
         # Check tolerance exit criterion
-        # Exit when the gradient norm drops below tol
-        grad_norm = grad_v_j.norm(p=2)
-        if grad_norm < tol:
+        # Exit when the relative change is less than the tolerance
+        b_diff_norm = (b_j - b_j_prev).norm(p=2)
+        b_j_norm = b_j.norm(p=2)
+        if b_diff_norm < rel_tol * b_j_norm:
             break
 
     return b_j
