@@ -27,8 +27,9 @@ B where each row corresponds to a single group (with appropriate 0 padding).
 The root of the group sizes are stored in a vector sns.
 The features are stored in a list of FloatTensor matrices each of
 size m x n_j where m is the number of samples, and n_j is the number of features
-in group j. For any j, r_j = y - b_0 - sum_{k =/= j} A_k@b_k, and
-q_j = r_j - A_j@b_j. Finally, a_1 = l_1*sns and a_2 = 2*l_2*sns.
+in group j. For any j, r_j = y - b_0 - sum_{k =/= j} A_k@b_k,
+q_j = r_j - A_j@b_j, C_j = A_j.T@A_j / m, and I_j is an identity matrix of size
+n_j. Finally, a_1 = l_1*sns and a_2 = 2*l_2*sns.
 """
 
 import torch
@@ -36,18 +37,23 @@ import cvxpy as cvx
 import numpy as np
 
 
-def _f_j(q_j, b_j, a_1_j, a_2_j, m):
+def _f_j(q_j, b_j_norm, a_1_j, a_2_j, m):
     """Compute the objective with respect to one of the coefficients i.e.
 
         (1/2m)||q_j||^2 + a_1||b_j|| + (a_2/2)||b_j||^2
     """
-    b_j_norm = b_j.norm(p=2)
     return (q_j@q_j)/(2.*m) + a_1_j*b_j_norm + (a_2_j/2.)*(b_j_norm**2)
 
 
-def _grad_j(q_j, A_j, b_j, a_1_j, a_2_j, m):
+def _grad_j(q_j, A_j, b_j, b_j_norm, a_1_j, a_2_j, m):
     """Compute the gradient with respect to one of the coefficients."""
-    return A_j.transpose(0, 1)@q_j/(-m) + b_j*(a_1_j/b_j.norm(p=2) + a_2_j)
+    return A_j.transpose(0, 1)@q_j/(-m) + b_j*(a_1_j/b_j_norm + a_2_j)
+
+
+def _hess_j(C_j, I_j, b_j, b_j_norm, a_1_j, a_2_j):
+    """Compute the Hessian with respect to one of the coefficients."""
+    D_j = torch.ger(b_j, b_j)
+    return C_j + (a_1_j/b_j_norm)*(I_j - D_j/(b_j_norm**2)) + a_2_j*I_j
 
 
 def block_solve_cvx(r_j, A_j, a_1_j, a_2_j, m, b_j_init):
@@ -89,8 +95,9 @@ def block_solve_agd(r_j, A_j, a_1_j, a_2_j, m, b_j_init, t_init=None,
         mom = (k - 2) / (k + 1.)
         v_j = b_j + mom*(b_j - b_j_prev)
         q_v_j = r_j - A_j@v_j
-        f_v_j = _f_j(q_v_j, v_j, a_1_j, a_2_j, m)
-        grad_v_j = _grad_j(q_v_j, A_j, v_j, a_1_j, a_2_j, m)
+        v_j_norm = v_j.norm(p=2)
+        f_v_j = _f_j(q_v_j, v_j_norm, a_1_j, a_2_j, m)
+        grad_v_j = _grad_j(q_v_j, A_j, v_j, v_j_norm, a_1_j, a_2_j, m)
 
         b_j_prev = b_j
 
@@ -108,7 +115,8 @@ def block_solve_agd(r_j, A_j, a_1_j, a_2_j, m, b_j_init, t_init=None,
             #   f_j(b_j) <= f_j(v_j) + grad_v_j.T@(b_j - v_j) +
             #       (1/2t)||b_j - v_j||^2
             q_b_j = r_j - A_j@b_j
-            f_b_j = _f_j(q_b_j, b_j, a_1_j, a_2_j, m)
+            b_j_norm = b_j.norm(p=2)
+            f_b_j = _f_j(q_b_j, b_j_norm, a_1_j, a_2_j, m)
             b_v_diff = b_j - v_j
             c2 = grad_v_j@b_v_diff
             c3 = b_v_diff@b_v_diff / (2.*t)
@@ -121,6 +129,7 @@ def block_solve_agd(r_j, A_j, a_1_j, a_2_j, m, b_j_init, t_init=None,
         # Make b_j non-zero if it is 0
         if len((b_j.abs() < 1e-6).nonzero()) == len(b_j):
             b_j.fill_(1e-3)
+            b_j_norm = b_j.norm(p=2)
 
         # Check max iterations exit criterion
         if max_iters is not None and k == max_iters:
@@ -130,9 +139,58 @@ def block_solve_agd(r_j, A_j, a_1_j, a_2_j, m, b_j_init, t_init=None,
         # Check tolerance exit criterion
         # Exit when the relative change is less than the tolerance
         b_diff_norm = (b_j - b_j_prev).norm(p=2)
-        b_j_norm = b_j.norm(p=2)
         if b_diff_norm < rel_tol * b_j_norm:
             break
+
+    return b_j
+
+
+def block_solve_newton(r_j, A_j, a_1_j, a_2_j, m, b_j_init, C_j, I_j,
+                       ls_alpha=0.5, ls_beta=0.9, max_iters=20, tol=1e-8):
+    """Solve the optimization problem for a single block with
+    Newton's method."""
+    b_j = b_j_init
+    k = 1
+    while True:
+        # First, compute the Newton step and decrement
+        q_b_j = r_j - A_j@b_j
+        b_j_norm = b_j.norm(p=2)
+        grad_b_j = _grad_j(q_b_j, A_j, b_j, b_j_norm, a_1_j, a_2_j, m)
+        hess_b_j = _hess_j(C_j, I_j, b_j, b_j_norm, a_1_j, a_2_j)
+        hessinv_b_j = torch.inverse(hess_b_j)
+        v_j = hessinv_b_j@grad_b_j
+        dec_j = grad_b_j@(hessinv_b_j@grad_b_j)
+
+        # Check tolerance stopping criterion
+        # Exit if dec_j / 2 is less than the tolerance
+        if dec_j / 2 <= tol:
+            break
+
+        # Perform backtracking line search
+        t = 1
+        f_b_j = _f_j(q_b_j, b_j_norm, a_1_j, a_2_j, m)
+        k_j = grad_b_j@v_j
+        while True:
+            # Compute the update and evaluate function at that point
+            bp_j = b_j - t*v_j
+            q_bp_j = r_j - A_j@bp_j
+            bp_j_norm = bp_j.norm(p=2)
+            f_bp_j = _f_j(q_bp_j, bp_j_norm, a_1_j, a_2_j, m)
+
+            if f_bp_j <= f_b_j - ls_alpha*t*k_j:
+                b_j = bp_j
+                break
+            else:
+                t *= ls_beta
+
+        # Make b_j non-zero if it is 0
+        if len((b_j.abs() < 1e-6).nonzero()) == len(b_j):
+            b_j.fill_(1e-3)
+
+        # Check max iterations stopping criterion
+        if max_iters is not None and k == max_iters:
+            break
+        k += 1
 
     return b_j
 
@@ -146,7 +204,8 @@ def make_A(As, ns):
 
 
 def gel_solve(A, y, l_1, l_2, ns, b_init, block_solve_fun=block_solve_agd,
-              block_solve_kwargs={}, max_cd_iters=None, rel_tol=1e-6):
+              block_solve_kwargs={}, max_cd_iters=None, rel_tol=1e-6,
+              Cs=None, Is=None):
     """Solve a group elastic net problem.
 
     Arguments:
@@ -164,6 +223,8 @@ def gel_solve(A, y, l_1, l_2, ns, b_init, block_solve_fun=block_solve_agd,
         rel_tol: tolerance for exit criterion; after every CD outer iteration,
             b is compared to the previous value, and if the relative difference
             is less than this value, the loop is terminated.
+        Cs, Is: lists of C_j and I_j matrices respectively; used if the internal
+            solver is Newton's method.
     """
     p = len(A)
     m = len(y)
@@ -195,6 +256,12 @@ def gel_solve(A, y, l_1, l_2, ns, b_init, block_solve_fun=block_solve_agd,
                 # First make sure initial value is not 0
                 if len((B[j, :ns[j]].abs() < 1e-6).nonzero()) == ns[j]:
                     B[j, :ns[j]] = 1e-3
+
+                # Add C_j and I_j to the arguments if using Newton's method
+                if block_solve_fun is block_solve_newton:
+                    block_solve_kwargs["C_j"] = Cs[j]
+                    block_solve_kwargs["I_j"] = Is[j]
+
                 B[j, :ns[j]] = block_solve_fun(r_j, A[j], a_1[j], a_2[j], m,
                                                B[j, :ns[j]],
                                                **block_solve_kwargs)

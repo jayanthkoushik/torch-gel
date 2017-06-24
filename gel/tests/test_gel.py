@@ -10,7 +10,7 @@ from gel.gelfista import gel_solve as gel_solve_fista
 from gel.gelfista import make_A as make_A_fista
 from gel.gelcd import gel_solve as gel_solve_cd
 from gel.gelcd import make_A as make_A_cd
-from gel.gelcd import block_solve_cvx, block_solve_agd
+from gel.gelcd import block_solve_cvx, block_solve_agd, block_solve_newton
 
 
 def gel_solve_cvx(As, y, l_1, l_2, ns):
@@ -148,3 +148,18 @@ class TestGelBirthwt(unittest.TestCase):
                                       "max_iters": None,
                                       "rel_tol": 1e-6
                                   }, max_cd_iters=None, rel_tol=1e-6)
+
+    def test_cd_newton(self):
+        """Test the CD implementation with Newton internal solver."""
+        # Compute the C_js and I_js
+        Cs = [(A_j.transpose(0, 1)@A_j)/self.m for A_j in self.As]
+        Is = [torch.eye(n_j) for n_j in self.ns]
+        self._test_implementation(make_A_cd, gel_solve_cd,
+                                  block_solve_fun=block_solve_newton,
+                                  block_solve_kwargs={
+                                      "ls_alpha": 0.01,
+                                      "ls_beta": 0.9,
+                                      "max_iters": 4,
+                                      "tol": 1e-10
+                                  }, max_cd_iters=None, rel_tol=1e-6, Cs=Cs,
+                                  Is=Is)
