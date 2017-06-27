@@ -28,6 +28,7 @@ and a_2 = 2*l_2*sns.
 """
 
 import torch
+import tqdm
 
 
 def _prox(B, a_1, a_2, t):
@@ -105,7 +106,7 @@ def make_A(As, ns):
 
 
 def gel_solve(A, y, l_1, l_2, ns, b_init, t_init=None, ls_beta=None,
-              max_iters=None, rel_tol=1e-6):
+              max_iters=None, rel_tol=1e-6, verbose=False):
     """Solve a group elastic net problem.
 
     Arguments:
@@ -122,6 +123,7 @@ def gel_solve(A, y, l_1, l_2, ns, b_init, t_init=None, ls_beta=None,
             performed, and t_init is used as the step size for every iteration.
         max_iters: maximum number of iterations; if None, there is no limit.
         rel_tol: tolerance for exit criterion.
+        verbose: boolean to enable/disable verbosity.
     """
     b_0, B = b_init
     b_0_prev, B_prev = b_0, B
@@ -132,6 +134,10 @@ def gel_solve(A, y, l_1, l_2, ns, b_init, t_init=None, ls_beta=None,
     a_2 = 2*l_2*sns
     k = 1 # Iteration number
     t = 1 # Initial step length (used if t_init is None)
+    pbar_stats = {} # Stats for the progress bar
+    pbar = tqdm.tqdm(
+        desc="Solving gel with FISTA (l_1 {:.2g}, l_2 {:.2g})".format(l_1, l_2),
+        disable=not verbose)
 
     while True:
         # Compute the v terms
@@ -171,6 +177,17 @@ def gel_solve(A, y, l_1, l_2, ns, b_init, t_init=None, ls_beta=None,
             else:
                 t *= ls_beta
 
+        # Compute relative change in b
+        b_0_diff = b_0 - b_0_prev
+        B_diff = B - B_prev
+        delta_norm = (b_0_diff**2 + (B_diff**2).sum(dim=0).sum(dim=1)).sqrt()
+        b_norm = (b_0**2 + (B**2).sum(dim=0).sum(dim=1)).sqrt()
+
+        pbar_stats["t"] = "{:.2g}".format(t)
+        pbar_stats["rel change"] = "{:.2g}".format((delta_norm / b_norm)[0, 0])
+        pbar.set_postfix(pbar_stats)
+        pbar.update()
+
         # Check max iterations exit criterion
         if max_iters is not None and k == max_iters:
             break
@@ -179,11 +196,8 @@ def gel_solve(A, y, l_1, l_2, ns, b_init, t_init=None, ls_beta=None,
         # Check tolerance exit criterion
         # Break if the relative change in 2-norm between b and
         # b_prev is less than tol
-        b_0_diff = b_0 - b_0_prev
-        B_diff = B - B_prev
-        delta_norm = (b_0_diff**2 + (B_diff**2).sum(dim=0).sum(dim=1)).sqrt()
-        b_norm = (b_0**2 + (B**2).sum(dim=0).sum(dim=1)).sqrt()
         if (delta_norm < rel_tol * b_norm)[0, 0]:
             break
 
+    pbar.close()
     return b_0, B

@@ -4,10 +4,13 @@ This module implements a 2-stage process where group elastic net
 is used to find the support, and ridge regression is performed on it.
 """
 
+import sys
+
 import torch
+import tqdm
 
 
-def ridge_paths(X, y, support, lambdas, summ_fun):
+def ridge_paths(X, y, support, lambdas, summ_fun, verbose=False):
     """Solve ridge ridgression for a sequence of regularization values,
     and return the summary for each.
 
@@ -36,6 +39,7 @@ def ridge_paths(X, y, support, lambdas, summ_fun):
         lambdas: list of regularization values for which to solve the problem.
         summ_fun: a function that takes (support, b) and returns an arbitrary
             summary.
+        verbose: enable/disable the progress bar.
 
     The function returns a dictionary mapping lambda values to their summaries.
     """
@@ -48,7 +52,8 @@ def ridge_paths(X, y, support, lambdas, summ_fun):
 
     # Main loop
     summaries = {}
-    for l in lambdas:
+    for l in tqdm.tqdm(lambdas, desc="Solving ridge regressions", ncols=80,
+                       disable=not verbose):
         b = (1./l)*(p - Q@(r / (e + l)))
         summaries[l] = summ_fun(support, b)
 
@@ -56,7 +61,7 @@ def ridge_paths(X, y, support, lambdas, summ_fun):
 
 
 def gel_paths(gel_solve, gel_solve_kwargs, make_A, As, y, l_1s, l_2s, l_rs,
-              summ_fun, supp_thresh=1e-6, use_gpu=False):
+              summ_fun, supp_thresh=1e-6, use_gpu=False, verbose=False):
     """Solve group elastic net to find support and perform ridge on it.
 
     The problem is solved for multiple values of l_1, l_2, and l_r (the ridge
@@ -74,6 +79,7 @@ def gel_paths(gel_solve, gel_solve_kwargs, make_A, As, y, l_1s, l_2s, l_rs,
         supp_thresh: for computing support, 2-norms below this value are
             considered 0.
         use_gpu: whether or not to use GPU.
+        verbose: enable/disable verbosity.
 
     The function returns a dictionary mapping (l_1, l_2, l_r) values to their
     summaries.
@@ -115,7 +121,8 @@ def gel_paths(gel_solve, gel_solve_kwargs, make_A, As, y, l_1s, l_2s, l_rs,
         b_init = 0., B_zeros # Reset the initial value for each l_2
         for l_1 in l_1s:
             # Solve group elastic net initializing at the previous solution
-            b_0, B = gel_solve(A, y, l_1, l_2, sns, b_init, **gel_solve_kwargs)
+            b_0, B = gel_solve(A, y, l_1, l_2, ns, b_init, verbose=verbose,
+                               **gel_solve_kwargs)
             b_init = b_0, B
 
             # Find support
@@ -131,10 +138,16 @@ def gel_paths(gel_solve, gel_solve_kwargs, make_A, As, y, l_1s, l_2s, l_rs,
             except IndexError:
                 # Empty support; only include bias
                 support = zerot
+            if verbose:
+                print("Support size: {}".format(len(support) - 1),
+                      file=sys.stderr)
 
             # Solve ridge on support and store summaries
-            ridge_summaries = ridge_paths(X, y, support, l_rs, summ_fun)
-            for l_r, summary in ridge_summaries.values():
+            ridge_summaries = ridge_paths(X, y, support, l_rs, summ_fun,
+                                          verbose)
+            for l_r, summary in ridge_summaries.items():
                 summaries[(l_1, l_2, l_r)] = summary
+            if verbose:
+                print("", file=sys.stderr)
 
     return summaries
