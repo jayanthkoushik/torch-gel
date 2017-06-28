@@ -31,9 +31,9 @@ Install with :code:`pip`::
 
     pip install torchgel
 
-:code:`torch` and :code:`tqdm` (for progress bars) are installed as
-dependencies. A suitable CUDA package needs to be manually installed for GPU
-support. Refer to the PyTorch docs for details.
+:code:`tqdm` (for progress bars) is pulled in as a dependency. PyTorch is also
+needed, and needs to be installed manually. Refer to the `PyTorch website
+<http://pytorch.org>`_ for instructions.
 
 Solving Single Instances
 ------------------------

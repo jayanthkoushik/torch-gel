@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="torchgel",
-    version="0.1",
+    version="0.2",
     description="PyTorch implementation of group elastic net",
     url="https://github.com/jayanthkoushik/torch-gel",
     author="Jayanth Koushik",
@@ -26,7 +26,6 @@ setup(
     keywords="pytorch lasso elasticnet",
     packages=find_packages(exclude=["tests"]),
     install_requires=[
-        "pytorch>=0.1",
         "tqdm>=4.0"
     ],
     python_requires=">=3.5",
