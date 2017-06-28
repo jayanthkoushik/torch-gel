@@ -34,8 +34,6 @@ n_j. Finally, a_1 = l_1*sns and a_2 = 2*l_2*sns.
 
 import torch
 import tqdm
-import cvxpy as cvx
-import numpy as np
 
 
 def _f_j(q_j, b_j_norm, a_1_j, a_2_j, m):
@@ -55,35 +53,6 @@ def _hess_j(C_j, I_j, b_j, b_j_norm, a_1_j, a_2_j):
     """Compute the Hessian with respect to one of the coefficients."""
     D_j = torch.ger(b_j, b_j)
     return C_j + (a_1_j/b_j_norm)*(I_j - D_j/(b_j_norm**2)) + a_2_j*I_j
-
-
-def block_solve_cvx(r_j, A_j, a_1_j, a_2_j, m, b_j_init, verbose=False):
-    """Solve the optimization problem for a single block with cvx.
-
-    b_j_init and verbose are ignored. b_j_init because cvx doesn't support it.
-    verbose because it doesn't go together with tqdm.
-    """
-    # Convert everything to numpy
-    r_j = r_j.numpy()
-    A_j = A_j.numpy()
-
-    # Create the b_j variable
-    b_j = cvx.Variable(A_j.shape[1])
-
-    # Form the objective
-    q_j = r_j - A_j*b_j
-    obj_fun = cvx.square(cvx.norm2(q_j)) / (2.*m)
-    obj_fun += a_1_j*cvx.norm2(b_j) + (a_2_j/2.)*cvx.square(cvx.norm2(b_j))
-
-    # Build the optimization problem
-    obj = cvx.Minimize(obj_fun)
-    problem = cvx.Problem(obj, constraints=None)
-
-    problem.solve(solver="CVXOPT", verbose=False)
-    b_j = np.asarray(b_j.value)
-    if A_j.shape[1] == 1:
-        b_j = b_j.reshape(1,)
-    return torch.FloatTensor(b_j)
 
 
 def block_solve_agd(r_j, A_j, a_1_j, a_2_j, m, b_j_init, t_init=None,

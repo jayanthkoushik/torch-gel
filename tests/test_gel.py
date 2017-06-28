@@ -11,7 +11,7 @@ from gel.gelfista import gel_solve as gel_solve_fista
 from gel.gelfista import make_A as make_A_fista
 from gel.gelcd import gel_solve as gel_solve_cd
 from gel.gelcd import make_A as make_A_cd
-from gel.gelcd import block_solve_cvx, block_solve_agd, block_solve_newton
+from gel.gelcd import block_solve_agd, block_solve_newton
 
 
 def gel_solve_cvx(As, y, l_1, l_2, ns):
@@ -55,6 +55,35 @@ def gel_solve_cvx(As, y, l_1, l_2, ns):
         B[j, :ns[j]] = torch.FloatTensor(b_j)
 
     return b_0, B
+
+
+def block_solve_cvx(r_j, A_j, a_1_j, a_2_j, m, b_j_init, verbose=False):
+    """Solve the gelcd optimization problem for a single block with cvx.
+
+    b_j_init and verbose are ignored. b_j_init because cvx doesn't support it.
+    verbose because it doesn't go together with tqdm.
+    """
+    # Convert everything to numpy
+    r_j = r_j.numpy()
+    A_j = A_j.numpy()
+
+    # Create the b_j variable
+    b_j = cvx.Variable(A_j.shape[1])
+
+    # Form the objective
+    q_j = r_j - A_j*b_j
+    obj_fun = cvx.square(cvx.norm2(q_j)) / (2.*m)
+    obj_fun += a_1_j*cvx.norm2(b_j) + (a_2_j/2.)*cvx.square(cvx.norm2(b_j))
+
+    # Build the optimization problem
+    obj = cvx.Minimize(obj_fun)
+    problem = cvx.Problem(obj, constraints=None)
+
+    problem.solve(solver="CVXOPT", verbose=False)
+    b_j = np.asarray(b_j.value)
+    if A_j.shape[1] == 1:
+        b_j = b_j.reshape(1,)
+    return torch.FloatTensor(b_j)
 
 
 def _b2vec(B, groups):
