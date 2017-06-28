@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 
 setup(
-    name="torch-gel",
+    name="torchgel",
     version="0.1",
     description="PyTorch implementation of group elastic net",
     url="https://github.com/jayanthkoushik/torch-gel",
