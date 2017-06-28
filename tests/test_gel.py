@@ -1,6 +1,7 @@
 """test_gel.py: framework to test gel implementations."""
 
 import unittest
+import os
 
 import torch
 import cvxpy as cvx
@@ -72,8 +73,10 @@ class TestGelBirthwt(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         """Load data and solve with cvx to get ground truth solution."""
         super().__init__(*args, **kwargs)
-        self.X = np.loadtxt("data/birthwt/X.csv", skiprows=1, delimiter=",")
-        self.y = np.loadtxt("data/birthwt/y.csv", skiprows=1)
+        data_dir = os.path.join(os.path.dirname(__file__), "data", "birthwt")
+        self.X = np.loadtxt(os.path.join(data_dir, "X.csv"), skiprows=1,
+                            delimiter=",")
+        self.y = np.loadtxt(os.path.join(data_dir, "y.csv"), skiprows=1)
         self.groups = [[0, 1, 2], [3, 4, 5], [6, 7], [8], [9, 10], [11], [12],
                        [13, 14, 15]]
         self.p = len(self.groups)
