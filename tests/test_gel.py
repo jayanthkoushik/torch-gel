@@ -155,7 +155,7 @@ class TestGelBirthwt(unittest.TestCase):
     def test_cd_newton(self):
         """Test the CD implementation with Newton internal solver."""
         # Compute the C_js and I_js
-        Cs = [(A_j.transpose(0, 1)@A_j)/self.m for A_j in self.As]
+        Cs = [(A_j.t()@A_j)/self.m for A_j in self.As]
         Is = [torch.eye(n_j) for n_j in self.ns]
         self._test_implementation(make_A_cd, gel_solve_cd,
                                   block_solve_fun=block_solve_newton,

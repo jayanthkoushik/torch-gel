@@ -24,7 +24,7 @@ class TestGelPaths(unittest.TestCase):
         summaries = ridge_paths(X, y, support, lambdas, summ_fun)
         # Compare each b with the naive solution
         I = torch.eye(X.size()[0])
-        Q = X@X.transpose(0, 1) # X@X.T
+        Q = X@X.t() # X@X.T
         r = X@y # X@y
         for l, b in summaries.items():
             b_naive = torch.inverse(Q + l*I)@r

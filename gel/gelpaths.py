@@ -45,10 +45,10 @@ def ridge_paths(X, y, support, lambdas, summ_fun, verbose=False):
     """
     # Setup
     X = X[support]
-    e, V = torch.symeig(X.transpose(0, 1)@X, eigenvectors=True)
+    e, V = torch.symeig(X.t()@X, eigenvectors=True)
     p = X@y # X@y
     Q = X@V # X@V
-    r = Q.transpose(0, 1)@p # (X@V).T@X@y
+    r = Q.t()@p # (X@V).T@X@y
 
     # Main loop
     summaries = {}
@@ -104,7 +104,7 @@ def gel_paths(gel_solve, gel_solve_kwargs, make_A, As, y, l_1s, l_2s, l_rs,
 
     # Form X which combines all the As and a column of 1s for the bias
     X = torch.cat([torch.ones(m, 1)] + As, dim=1)
-    X = X.transpose(0, 1) # ridge_paths expects a pxm matrix
+    X = X.t() # ridge_paths expects a pxm matrix
 
     if use_gpu:
         # Move tensors to GPU

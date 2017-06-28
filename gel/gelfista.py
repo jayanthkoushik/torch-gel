@@ -101,7 +101,7 @@ def make_A(As, ns):
     for j, n_j in enumerate(ns):
         # Fill A[j] with A_j.T
         A_j = As[j]
-        A[j, :n_j, :] = A_j.transpose(1, 0)
+        A[j, :n_j, :] = A_j.t()
     return A
 
 

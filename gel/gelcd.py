@@ -48,7 +48,7 @@ def _f_j(q_j, b_j_norm, a_1_j, a_2_j, m):
 
 def _grad_j(q_j, A_j, b_j, b_j_norm, a_1_j, a_2_j, m):
     """Compute the gradient with respect to one of the coefficients."""
-    return A_j.transpose(0, 1)@q_j/(-m) + b_j*(a_1_j/b_j_norm + a_2_j)
+    return A_j.t()@q_j/(-m) + b_j*(a_1_j/b_j_norm + a_2_j)
 
 
 def _hess_j(C_j, I_j, b_j, b_j_norm, a_1_j, a_2_j):
@@ -280,7 +280,7 @@ def gel_solve(A, y, l_1, l_2, ns, b_init, block_solve_fun=block_solve_agd,
             # Check if b_j must be set to 0
             # The condition is
             #   ||A_j.T@r_j|| <= m*a_1
-            if (A[j].transpose(0, 1)@r_j).norm(p=2) <= ma_1[j]:
+            if (A[j].t()@r_j).norm(p=2) <= ma_1[j]:
                 B[j] = 0
             else:
                 # Otherwise, minimize
