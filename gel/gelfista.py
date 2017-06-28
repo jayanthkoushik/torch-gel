@@ -105,7 +105,7 @@ def make_A(As, ns):
     return A
 
 
-def gel_solve(A, y, l_1, l_2, ns, b_init, t_init=None, ls_beta=None,
+def gel_solve(A, y, l_1, l_2, ns, b_init=None, t_init=None, ls_beta=None,
               max_iters=None, rel_tol=1e-6, verbose=False):
     """Solve a group elastic net problem.
 
@@ -125,11 +125,16 @@ def gel_solve(A, y, l_1, l_2, ns, b_init, t_init=None, ls_beta=None,
         rel_tol: tolerance for exit criterion.
         verbose: boolean to enable/disable verbosity.
     """
+    p = len(ns)
+    m = len(y)
+
+    # Create initial values if not specified
+    if b_init is None:
+        b_init = 0., torch.zeros(p, ns.max())
+
     b_0, B = b_init
     b_0_prev, B_prev = b_0, B
     sns = ns.float().sqrt().unsqueeze(1).expand_as(B)
-    p = len(sns)
-    m = len(y)
     a_1 = l_1*sns
     a_2 = 2*l_2*sns
     k = 1 # Iteration number

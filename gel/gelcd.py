@@ -228,7 +228,7 @@ def make_A(As, ns):
     return As
 
 
-def gel_solve(A, y, l_1, l_2, ns, b_init, block_solve_fun=block_solve_agd,
+def gel_solve(A, y, l_1, l_2, ns, b_init=None, block_solve_fun=block_solve_agd,
               block_solve_kwargs={}, max_cd_iters=None, rel_tol=1e-6,
               Cs=None, Is=None, verbose=False):
     """Solve a group elastic net problem.
@@ -254,6 +254,11 @@ def gel_solve(A, y, l_1, l_2, ns, b_init, block_solve_fun=block_solve_agd,
     """
     p = len(A)
     m = len(y)
+
+    # Create initial values if not specified
+    if b_init is None:
+        b_init = 0., torch.zeros(p, ns.max())
+
     sns = ns.float().sqrt()
     a_1 = l_1*sns
     ma_1 = m*a_1

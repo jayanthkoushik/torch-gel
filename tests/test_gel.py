@@ -120,14 +120,11 @@ class TestGelBirthwt(unittest.TestCase):
     def _test_implementation(self, make_A, gel_solve, **gel_solve_kwargs):
         """Test the given implementation."""
         A = make_A(self.As, self.ns)
-        b_0, B = gel_solve(A, self.yt, self.l_1, self.l_2, self.ns, self.b_init,
+        b_0, B = gel_solve(A, self.yt, self.l_1, self.l_2, self.ns,
                            **gel_solve_kwargs)
         b = _b2vec(B, self.groups)
         obj = self._obj(b_0, b)
         self._compare_to_cvx(b_0, b, obj)
-
-    def setUp(self):
-        self.b_init = 0., torch.zeros(self.p, self.ns.max())
 
     def test_fista(self):
         """Test the FISTA implementation of gel_solve."""
