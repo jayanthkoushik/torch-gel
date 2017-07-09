@@ -5,6 +5,7 @@ is used to find the support, and ridge regression is performed on it.
 """
 
 import sys
+import math
 
 import torch
 import tqdm
@@ -58,6 +59,23 @@ def ridge_paths(X, y, support, lambdas, summ_fun, verbose=False):
         summaries[l] = summ_fun(support, b)
 
     return summaries
+
+
+def _find_support(B, ns, supp_thresh, zerot):
+    """Find features with non-zero coefficients."""
+    try:
+        support = (B.norm(p=2, dim=1) >= supp_thresh).expand_as(B)
+        support = torch.cat([s_j[:n_j] for s_j, n_j in
+                             zip(support, ns)])
+        support = torch.nonzero(support)[:, 0]
+        # The numbers above have to be shifted by 1, and the bias index
+        # needs to be added to the list
+        support = support + 1
+        support = torch.cat([zerot, support])
+    except IndexError:
+        # Empty support; only include bias
+        support = zerot
+    return support
 
 
 def gel_paths(gel_solve, gel_solve_kwargs, make_A, As, y, l_1s, l_2s, l_rs,
@@ -126,18 +144,7 @@ def gel_paths(gel_solve, gel_solve_kwargs, make_A, As, y, l_1s, l_2s, l_rs,
             b_init = b_0, B
 
             # Find support
-            try:
-                support = (B.norm(p=2, dim=1) >= supp_thresh).expand_as(B)
-                support = torch.cat([s_j[:n_j] for s_j, n_j in
-                                     zip(support, ns)])
-                support = torch.nonzero(support)[:, 0]
-                # The numbers above have to be shifted by 1, and the bias index
-                # needs to be added to the list
-                support = support + 1
-                support = torch.cat([zerot, support])
-            except IndexError:
-                # Empty support; only include bias
-                support = zerot
+            support = _find_support(B, ns, supp_thresh, zerot)
             if verbose:
                 print("Support size: {}".format(len(support) - 1),
                       file=sys.stderr)
@@ -147,6 +154,84 @@ def gel_paths(gel_solve, gel_solve_kwargs, make_A, As, y, l_1s, l_2s, l_rs,
                                           verbose)
             for l_r, summary in ridge_summaries.items():
                 summaries[(l_1, l_2, l_r)] = summary
+            if verbose:
+                print("", file=sys.stderr)
+
+    return summaries
+
+
+def gel_paths2(gel_solve, gel_solve_kwargs, make_A, As, y, ks, n_ls, l_eps,
+               l_rs, summ_fun, supp_thresh=1e-6, use_gpu=False, verbose=False):
+    """Solve for paths with a reparametrized group elastic net.
+
+    The regularization terms can be rewritten as
+
+        l*(k*||b_j|| + (1 - k)*||b_j||^2)
+
+    where k controls the tradeoff between the two norms,
+    and l controls the overall strength. This function takes a list of
+    tradeoff values through ks. For each k, an upper bound can be found on l
+    (which will lead to an empty support). Using this upper bound,
+    n_ls l values are computed on a log scale such that
+    l_min / l_max = l_eps. Other arguments are same as in gel_paths.
+    """
+    # Setup is mostly identical to gel_paths
+    zerot = torch.LongTensor([0])
+    p = len(As)
+    m = As[0].size()[0]
+    ns = torch.LongTensor([A_j.size()[1] for A_j in As])
+    B_zeros = torch.zeros(p, ns.max())
+    sns = ns.float().sqrt().unsqueeze(1).expand_as(B_zeros)
+    A = make_A(As, ns)
+    X = torch.cat([torch.ones(m, 1)] + As, dim=1)
+    X = X.t()
+
+    if use_gpu:
+        # Move tensors to GPU
+        zerot = zerot.cuda()
+        B_zeros = B_zeros.cuda()
+        ns = ns.cuda()
+        sns = sns.cuda()
+        A = A.cuda()
+        X = X.cuda()
+        y = y.cuda()
+
+    # The bound is given by max{||A_j.T@(y - b_0)||/(m*sqrt{n_j}*k)}
+    # where b_0 = 1.T@y/m.
+    # So most things can be precomputed
+    l_max_b_0 = y.mean()
+    l_max_unscaled = max((A_j.t()@(y - l_max_b_0)).norm(p=2)/(m*sns_j)
+                         for A_j, sns_j in zip(As, sns[:, 0]))
+
+    summaries = {}
+    for k in ks:
+        b_init = 0., B_zeros # Reset the initial value for each k
+
+        # Get l values
+        l_max = l_max_unscaled / k
+        l_min = l_max * l_eps
+        ls = torch.logspace(math.log10(l_min), math.log10(l_max), steps=n_ls)
+
+        for l in ls:
+            # Convert k, l into l_1, l_2
+            l_1, l_2 = k*l, (1.-k)*l
+
+            # Rest is similar to gel_paths
+            b_0, B = gel_solve(A, y, l_1, l_2, ns, b_init, verbose=verbose,
+                               **gel_solve_kwargs)
+            b_init = b_0, B
+
+            # Find support
+            support = _find_support(B, ns, supp_thresh, zerot)
+            if verbose:
+                print("Support size: {}".format(len(support) - 1),
+                      file=sys.stderr)
+
+            # Solve ridge on support and store summaries
+            ridge_summaries = ridge_paths(X, y, support, l_rs, summ_fun,
+                                          verbose)
+            for l_r, summary in ridge_summaries.items():
+                summaries[(k, l, l_r)] = summary
             if verbose:
                 print("", file=sys.stderr)
 
