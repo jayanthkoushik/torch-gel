@@ -133,6 +133,12 @@ def gel_paths(gel_solve, gel_solve_kwargs, make_A, As, y, l_1s, l_2s, l_rs,
         A = A.cuda()
         X = X.cuda()
         y = y.cuda()
+        if "Cs" in gel_solve_kwargs:
+            gel_solve_kwargs["Cs"] = [C_j.cuda() for C_j in
+                                      gel_solve_kwargs["Cs"]]
+        if "Is" in gel_solve_kwargs:
+            gel_solve_kwargs["Is"] = [I_j.cuda() for I_j in
+                                      gel_solve_kwargs["Is"]]
 
     summaries = {}
     for l_2 in l_2s:
@@ -195,6 +201,12 @@ def gel_paths2(gel_solve, gel_solve_kwargs, make_A, As, y, ks, n_ls, l_eps,
         A = A.cuda()
         X = X.cuda()
         y = y.cuda()
+        if "Cs" in gel_solve_kwargs:
+            gel_solve_kwargs["Cs"] = [C_j.cuda() for C_j in
+                                      gel_solve_kwargs["Cs"]]
+        if "Is" in gel_solve_kwargs:
+            gel_solve_kwargs["Is"] = [I_j.cuda() for I_j in
+                                      gel_solve_kwargs["Is"]]
 
     # The bound is given by max{||A_j.T@(y - b_0)||/(m*sqrt{n_j}*k)}
     # where b_0 = 1.T@y/m.
