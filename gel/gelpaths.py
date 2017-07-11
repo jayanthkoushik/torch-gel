@@ -32,50 +32,54 @@ def ridge_paths(X, y, support, lambdas, summ_fun, verbose=False):
     multiplication.
 
     Arguments:
-        X: pxm FloatTensor of features (where m is the number of samples)
+        X: pxm FloatTensor of features (where m is the number of samples);
+            X should be centered (each row should have mean 0).
         y: FloatTensor (length m vector) of outcomes.
         support: LongTensor vector of features from X to use. This vector
             should contain indices. These dimensions of X will be used for
-            the regression.
+            the regression. It can also be None to indicate empty support.
         lambdas: list of regularization values for which to solve the problem.
-        summ_fun: a function that takes (support, b) and returns an arbitrary
-            summary.
+        summ_fun: a function that takes (support, b) and returns an
+            arbitrary summary.
         verbose: enable/disable the progress bar.
 
     The function returns a dictionary mapping lambda values to their summaries.
     """
-    # Setup
-    X = X[support]
-    e, V = torch.symeig(X.t()@X, eigenvectors=True)
-    p = X@y # X@y
-    Q = X@V # X@V
-    r = Q.t()@p # (X@V).T@X@y
-
-    # Main loop
     summaries = {}
-    for l in tqdm.tqdm(lambdas, desc="Solving ridge regressions", ncols=80,
-                       disable=not verbose):
-        b = (1./l)*(p - Q@(r / (e + l)))
-        summaries[l] = summ_fun(support, b)
+
+    if support is None:
+        # Nothing to do
+        for l in tqdm.tqdm(lambdas, desc="Solving ridge regressions", ncols=80,
+                           disable=not verbose):
+            summaries[l] = summ_fun(None, None)
+        return summaries
+
+    else:
+        # Setup
+        X = X[support]
+        e, V = torch.symeig(X.t()@X, eigenvectors=True)
+        p = X@y # X@y
+        Q = X@V # X@V
+        r = Q.t()@p # (X@V).T@X@y
+
+        # Main loop
+        for l in tqdm.tqdm(lambdas, desc="Solving ridge regressions", ncols=80,
+                           disable=not verbose):
+            b = (1./l)*(p - Q@(r / (e + l)))
+            summaries[l] = summ_fun(support, b)
 
     return summaries
 
 
-def _find_support(B, ns, supp_thresh, zerot):
+def _find_support(B, ns, supp_thresh):
     """Find features with non-zero coefficients."""
     try:
         support = (B.norm(p=2, dim=1) >= supp_thresh).expand_as(B)
         support = torch.cat([s_j[:n_j] for s_j, n_j in
                              zip(support, ns)])
-        support = torch.nonzero(support)[:, 0]
-        # The numbers above have to be shifted by 1, and the bias index
-        # needs to be added to the list
-        support = support + 1
-        support = torch.cat([zerot, support])
+        return torch.nonzero(support)[:, 0]
     except IndexError:
-        # Empty support; only include bias
-        support = zerot
-    return support
+        return None
 
 
 def gel_paths(gel_solve, gel_solve_kwargs, make_A, As, y, l_1s, l_2s, l_rs,
@@ -91,7 +95,8 @@ def gel_paths(gel_solve, gel_solve_kwargs, make_A, As, y, l_1s, l_2s, l_rs,
             internally.
         gel_solve_kwargs: dictionary of keyword arguments to be passed to
             gel_solve.
-        As: list of feature matrices (same as in make_A).
+        As: list of feature matrices (same as in make_A). All features should
+            be centered.
         l_1s, l_2s, l_rs: list of values for l_1, l_2, and l_r respectively.
         summ_fun: function to summarize results (same as in ridge_paths).
         supp_thresh: for computing support, 2-norms below this value are
@@ -110,7 +115,6 @@ def gel_paths(gel_solve, gel_solve_kwargs, make_A, As, y, l_1s, l_2s, l_rs,
 
     # First compute various required variables
     l_1s = sorted(l_1s, reverse=True)
-    zerot = torch.LongTensor([0])
     p = len(As)
     m = As[0].size()[0]
     ns = torch.LongTensor([A_j.size()[1] for A_j in As])
@@ -120,13 +124,12 @@ def gel_paths(gel_solve, gel_solve_kwargs, make_A, As, y, l_1s, l_2s, l_rs,
     # Form the A matrix as needed by gel_solve
     A = make_A(As, ns)
 
-    # Form X which combines all the As and a column of 1s for the bias
-    X = torch.cat([torch.ones(m, 1)] + As, dim=1)
+    # Form X which combines all the As
+    X = torch.cat(As, dim=1)
     X = X.t() # ridge_paths expects a pxm matrix
 
     if use_gpu:
         # Move tensors to GPU
-        zerot = zerot.cuda()
         B_zeros = B_zeros.cuda()
         ns = ns.cuda()
         sns = sns.cuda()
@@ -150,10 +153,10 @@ def gel_paths(gel_solve, gel_solve_kwargs, make_A, As, y, l_1s, l_2s, l_rs,
             b_init = b_0, B
 
             # Find support
-            support = _find_support(B, ns, supp_thresh, zerot)
+            support = _find_support(B, ns, supp_thresh)
             if verbose:
-                print("Support size: {}".format(len(support) - 1),
-                      file=sys.stderr)
+                support_size = 0 if support is None else len(support)
+                print("Support size: {}".format(support_size), file=sys.stderr)
 
             # Solve ridge on support and store summaries
             ridge_summaries = ridge_paths(X, y, support, l_rs, summ_fun,
@@ -182,19 +185,17 @@ def gel_paths2(gel_solve, gel_solve_kwargs, make_A, As, y, ks, n_ls, l_eps,
     l_min / l_max = l_eps. Other arguments are same as in gel_paths.
     """
     # Setup is mostly identical to gel_paths
-    zerot = torch.LongTensor([0])
     p = len(As)
     m = As[0].size()[0]
     ns = torch.LongTensor([A_j.size()[1] for A_j in As])
     B_zeros = torch.zeros(p, ns.max())
     sns = ns.float().sqrt().unsqueeze(1).expand_as(B_zeros)
     A = make_A(As, ns)
-    X = torch.cat([torch.ones(m, 1)] + As, dim=1)
+    X = torch.cat(As, dim=1)
     X = X.t()
 
     if use_gpu:
         # Move tensors to GPU
-        zerot = zerot.cuda()
         B_zeros = B_zeros.cuda()
         ns = ns.cuda()
         sns = sns.cuda()
@@ -234,10 +235,10 @@ def gel_paths2(gel_solve, gel_solve_kwargs, make_A, As, y, ks, n_ls, l_eps,
             b_init = b_0, B
 
             # Find support
-            support = _find_support(B, ns, supp_thresh, zerot)
+            support = _find_support(B, ns, supp_thresh)
             if verbose:
-                print("Support size: {}".format(len(support) - 1),
-                      file=sys.stderr)
+                support_size = 0 if support is None else len(support)
+                print("Support size: {}".format(support_size), file=sys.stderr)
 
             # Solve ridge on support and store summaries
             ridge_summaries = ridge_paths(X, y, support, l_rs, summ_fun,
