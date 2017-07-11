@@ -122,7 +122,7 @@ def gel_paths(gel_solve, gel_solve_kwargs, make_A, As, y, l_1s, l_2s, l_rs,
     sns = ns.float().sqrt().unsqueeze(1).expand_as(B_zeros)
 
     # Form the A matrix as needed by gel_solve
-    A = make_A(As, ns)
+    A = make_A(As, ns, use_gpu)
 
     # Form X which combines all the As
     X = torch.cat(As, dim=1)
@@ -133,7 +133,6 @@ def gel_paths(gel_solve, gel_solve_kwargs, make_A, As, y, l_1s, l_2s, l_rs,
         B_zeros = B_zeros.cuda()
         ns = ns.cuda()
         sns = sns.cuda()
-        A = A.cuda()
         X = X.cuda()
         y = y.cuda()
         if "Cs" in gel_solve_kwargs:
@@ -190,7 +189,7 @@ def gel_paths2(gel_solve, gel_solve_kwargs, make_A, As, y, ks, n_ls, l_eps,
     ns = torch.LongTensor([A_j.size()[1] for A_j in As])
     B_zeros = torch.zeros(p, ns.max())
     sns = ns.float().sqrt().unsqueeze(1).expand_as(B_zeros)
-    A = make_A(As, ns)
+    A = make_A(As, ns, use_gpu)
     X = torch.cat(As, dim=1)
     X = X.t()
 
@@ -199,7 +198,6 @@ def gel_paths2(gel_solve, gel_solve_kwargs, make_A, As, y, ks, n_ls, l_eps,
         B_zeros = B_zeros.cuda()
         ns = ns.cuda()
         sns = sns.cuda()
-        A = A.cuda()
         X = X.cuda()
         y = y.cuda()
         if "Cs" in gel_solve_kwargs:

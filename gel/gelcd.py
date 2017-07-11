@@ -189,11 +189,10 @@ def block_solve_newton(r_j, A_j, a_1_j, a_2_j, m, b_j_init, C_j, I_j,
     return b_j
 
 
-def make_A(As, ns):
-    """Dummy function for compatibility with gel_solve_fista.
-
-    Returns As as A.
-    """
+def make_A(As, ns, use_gpu=False):
+    """Returns As as A, and optionally, moves it to GPU."""
+    if use_gpu:
+        As = [A_j.cuda() for A_j in As]
     return As
 
 
