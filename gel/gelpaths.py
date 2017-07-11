@@ -193,6 +193,7 @@ def gel_paths2(gel_solve, gel_solve_kwargs, make_A, As, y, ks, n_ls, l_eps,
     X = torch.cat(As, dim=1)
     X = X.t()
 
+    y_cpu = y
     if use_gpu:
         # Move tensors to GPU
         B_zeros = B_zeros.cuda()
@@ -211,7 +212,7 @@ def gel_paths2(gel_solve, gel_solve_kwargs, make_A, As, y, ks, n_ls, l_eps,
     # where b_0 = 1.T@y/m.
     # So most things can be precomputed
     l_max_b_0 = y.mean()
-    l_max_unscaled = max((A_j.t()@(y - l_max_b_0)).norm(p=2)/(m*sns_j)
+    l_max_unscaled = max((A_j.t()@(y_cpu - l_max_b_0)).norm(p=2)/(m*sns_j)
                          for A_j, sns_j in zip(As, sns[:, 0]))
 
     summaries = {}
