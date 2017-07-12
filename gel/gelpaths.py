@@ -223,7 +223,12 @@ def gel_paths2(gel_solve, gel_solve_kwargs, make_A, As, y, ks, n_ls, l_eps,
         l_max = l_max_unscaled / k
         l_min = l_max * l_eps
         ls = torch.logspace(math.log10(l_min), math.log10(l_max), steps=n_ls)
+        # Put the ls in descending order
+        # That way, the support will go from 0 to full,
+        # and we can stop when that happens.
+        ls = sorted(ls, reverse=True)
 
+        full_support = False
         for l in ls:
             # Convert k, l into l_1, l_2
             l_1, l_2 = k*l, (1.-k)*l
@@ -235,8 +240,10 @@ def gel_paths2(gel_solve, gel_solve_kwargs, make_A, As, y, ks, n_ls, l_eps,
 
             # Find support
             support = _find_support(B, ns, supp_thresh)
+            support_size = 0 if support is None else len(support)
+            if support_size == X.size()[0]:
+                full_support = True
             if verbose:
-                support_size = 0 if support is None else len(support)
                 print("Support size: {}".format(support_size), file=sys.stderr)
 
             # Solve ridge on support and store summaries
@@ -246,5 +253,8 @@ def gel_paths2(gel_solve, gel_solve_kwargs, make_A, As, y, ks, n_ls, l_eps,
                 summaries[(k, l, l_r)] = summary
             if verbose:
                 print("", file=sys.stderr)
+
+            if full_support:
+                break
 
     return summaries
