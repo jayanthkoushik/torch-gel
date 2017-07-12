@@ -1,11 +1,21 @@
 """setup.py: setup script for the project."""
 
+import re
+import os
 from setuptools import setup, find_packages
+
+
+# Get the version number
+version_file = os.path.join(os.path.dirname(__file__), "gel", "_version.py")
+with open(version_file) as f:
+    version_str = f.read()
+version_str_pattern = r'^__version__ = "(.*?)"$'
+version = re.search(version_str_pattern, version_str, re.M).group(1)
 
 
 setup(
     name="torchgel",
-    version="0.6.3",
+    version=version,
     description="PyTorch implementation of group elastic net",
     url="https://github.com/jayanthkoushik/torch-gel",
     author="Jayanth Koushik",
