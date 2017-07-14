@@ -176,7 +176,7 @@ def gel_paths(gel_solve, gel_solve_kwargs, make_A, As, y, l_1s, l_2s, l_rs,
 
 def gel_paths2(gel_solve, gel_solve_kwargs, make_A, As, y, ks, n_ls, l_eps,
                l_rs, summ_fun, supp_thresh=1e-6, use_gpu=False, verbose=False,
-               ls_grid=None):
+               ls_grid=None, aux_rel_tol=1e-3):
     """Solve for paths with a reparametrized group elastic net.
 
     The regularization terms can be rewritten as
@@ -193,6 +193,8 @@ def gel_paths2(gel_solve, gel_solve_kwargs, make_A, As, y, ks, n_ls, l_eps,
     ls_grid is a pre-computed dictionary mapping each k in ks to a list of
     l values (in decreasing order). If this argument is not None, n_ls and
     l_eps are ignored.
+
+    aux_rel_tol is the relative tolerance for solving auxiliary problems.
     """
     # Setup is mostly identical to gel_paths
     p = len(As)
@@ -220,27 +222,34 @@ def gel_paths2(gel_solve, gel_solve_kwargs, make_A, As, y, ks, n_ls, l_eps,
 
     if ls_grid is None:
         ls_grid = compute_ls_grid(As, y_cpu, sns[:, 0], m, ks, n_ls, l_eps)
-        l_maxs = None
+        ls_grid_self = None
     else:
-        # Compute the l_max values to get good initializations
-        l_maxs = compute_ls_grid(As, y_cpu, sns[:, 0], m, ks, 1, l_eps)
+        # Compute l values with self data to get good initializations
+        ls_grid_self = compute_ls_grid(As, y_cpu, sns[:, 0], m, ks, n_ls, l_eps)
+        gel_solve_kwargs_aux = gel_solve_kwargs.copy()
+        gel_solve_kwargs_aux["rel_tol"] = aux_rel_tol
 
     summaries = {}
     for k in ks:
         b_init = 0., B_zeros # Reset the initial value for each k
-
-        if l_maxs is not None:
-            # Solve with l_max to get a better initialization
-            # This _greatly_ speeds up the optimization
-            if verbose:
-                print("Solving auxiliary problem to get good initialization",
-                      file=sys.stderr)
-            l_max = l_maxs[k][0]
-            b_init = gel_solve(A, y, k*l_max, (1.-k)*l_max, ns, b_init,
-                               verbose=verbose, **gel_solve_kwargs)
-
         ls = ls_grid[k]
         full_support = False
+
+        if ls_grid_self is not None:
+            # Solve with self l values to get a better initialization
+            # This _greatly_ speeds up the optimization
+            if verbose:
+                print("Solving auxiliary problems to get good initialization",
+                      file=sys.stderr)
+            ls_self = ls_grid_self[k]
+            for l_self in ls_self:
+                if l_self < ls[0]:
+                    break
+                b_init = gel_solve(A, y, k*l_self, (1.-k)*l_self, ns, b_init,
+                                   verbose=verbose, **gel_solve_kwargs_aux)
+            if verbose:
+                print("Done solving auxiliary problems", file=sys.stderr)
+
         for l in ls:
             if full_support:
                 # Just copy the previous summaries
