@@ -35,9 +35,10 @@ def ridge_paths(X, y, support, lambdas, summ_fun, verbose=False):
         X: pxm FloatTensor of features (where m is the number of samples);
             X should be centered (each row should have mean 0).
         y: FloatTensor (length m vector) of outcomes.
-        support: LongTensor vector of features from X to use. This vector
-            should contain indices. These dimensions of X will be used for
-            the regression. It can also be None to indicate empty support.
+        support: LongTensor vector of features to use. This vector
+            should contain indices. It can also be None to indicate empty
+            support. X should already be indexed using support.
+            This argument is simply passed to the summary function.
         lambdas: list of regularization values for which to solve the problem.
         summ_fun: a function that takes (support, b) and returns an
             arbitrary summary.
@@ -56,7 +57,6 @@ def ridge_paths(X, y, support, lambdas, summ_fun, verbose=False):
 
     else:
         # Setup
-        X = X[support]
         e, V = torch.symeig(X.t()@X, eigenvectors=True)
         p = X@y # X@y
         Q = X@V # X@V
@@ -133,7 +133,6 @@ def gel_paths(gel_solve, gel_solve_kwargs, make_A, As, y, l_1s, l_2s, l_rs,
         B_zeros = B_zeros.cuda()
         ns = ns.cuda()
         sns = sns.cuda()
-        X = X.cuda()
         y = y.cuda()
         if "Cs" in gel_solve_kwargs:
             gel_solve_kwargs["Cs"] = [C_j.cuda() for C_j in
@@ -158,8 +157,15 @@ def gel_paths(gel_solve, gel_solve_kwargs, make_A, As, y, l_1s, l_2s, l_rs,
                 print("Support size: {}".format(support_size), file=sys.stderr)
 
             # Solve ridge on support and store summaries
-            ridge_summaries = ridge_paths(X, y, support, l_rs, summ_fun,
+            if support is not None:
+                X_supp = X[support.cpu()]
+                if use_gpu:
+                    X_supp = X_supp.cuda()
+            else:
+                X_supp = None
+            ridge_summaries = ridge_paths(X_supp, y, support, l_rs, summ_fun,
                                           verbose)
+            del X_supp
             for l_r, summary in ridge_summaries.items():
                 summaries[(l_1, l_2, l_r)] = summary
             if verbose:
@@ -199,7 +205,6 @@ def gel_paths2(gel_solve, gel_solve_kwargs, make_A, As, y, ks, n_ls, l_eps,
         B_zeros = B_zeros.cuda()
         ns = ns.cuda()
         sns = sns.cuda()
-        X = X.cuda()
         y = y.cuda()
         if "Cs" in gel_solve_kwargs:
             gel_solve_kwargs["Cs"] = [C_j.cuda() for C_j in
@@ -247,8 +252,15 @@ def gel_paths2(gel_solve, gel_solve_kwargs, make_A, As, y, ks, n_ls, l_eps,
                 print("Support size: {}".format(support_size), file=sys.stderr)
 
             # Solve ridge on support and store summaries
-            ridge_summaries = ridge_paths(X, y, support, l_rs, summ_fun,
+            if support is not None:
+                X_supp = X[support.cpu()]
+                if use_gpu:
+                    X_supp = X_supp.cuda()
+            else:
+                X_supp = None
+            ridge_summaries = ridge_paths(X_supp, y, support, l_rs, summ_fun,
                                           verbose)
+            del X_supp
             for l_r, summary in ridge_summaries.items():
                 summaries[(k, l, l_r)] = summary
             if verbose:
