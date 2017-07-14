@@ -227,6 +227,12 @@ def gel_paths2(gel_solve, gel_solve_kwargs, make_A, As, y, ks, n_ls, l_eps,
         ls = ls_grid[k]
         full_support = False
         for l in ls:
+            if full_support:
+                # Just copy the previous summaries
+                for l_r, summary in ridge_summaries.items():
+                    summaries[(k, l, l_r)] = summary
+                continue
+
             # Convert k, l into l_1, l_2
             l_1, l_2 = k*l, (1.-k)*l
 
@@ -257,9 +263,6 @@ def gel_paths2(gel_solve, gel_solve_kwargs, make_A, As, y, ks, n_ls, l_eps,
                 summaries[(k, l, l_r)] = summary
             if verbose:
                 print("", file=sys.stderr)
-
-            if full_support:
-                break
 
     return summaries
 
