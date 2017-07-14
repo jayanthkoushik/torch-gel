@@ -175,7 +175,8 @@ def gel_paths(gel_solve, gel_solve_kwargs, make_A, As, y, l_1s, l_2s, l_rs,
 
 
 def gel_paths2(gel_solve, gel_solve_kwargs, make_A, As, y, ks, n_ls, l_eps,
-               l_rs, summ_fun, supp_thresh=1e-6, use_gpu=False, verbose=False):
+               l_rs, summ_fun, supp_thresh=1e-6, use_gpu=False, verbose=False,
+               ls_grid=None):
     """Solve for paths with a reparametrized group elastic net.
 
     The regularization terms can be rewritten as
@@ -188,6 +189,10 @@ def gel_paths2(gel_solve, gel_solve_kwargs, make_A, As, y, ks, n_ls, l_eps,
     (which will lead to an empty support). Using this upper bound,
     n_ls l values are computed on a log scale such that
     l_min / l_max = l_eps. Other arguments are same as in gel_paths.
+
+    ls_grid is a pre-computed dictionary mapping each k in ks to a list of
+    l values (in decreasing order). If this argument is not None, n_ls and
+    l_eps are ignored.
     """
     # Setup is mostly identical to gel_paths
     p = len(As)
@@ -213,26 +218,13 @@ def gel_paths2(gel_solve, gel_solve_kwargs, make_A, As, y, ks, n_ls, l_eps,
             gel_solve_kwargs["Is"] = [I_j.cuda() for I_j in
                                       gel_solve_kwargs["Is"]]
 
-    # The bound is given by max{||A_j.T@(y - b_0)||/(m*sqrt{n_j}*k)}
-    # where b_0 = 1.T@y/m.
-    # So most things can be precomputed
-    l_max_b_0 = y.mean()
-    l_max_unscaled = max((A_j.t()@(y_cpu - l_max_b_0)).norm(p=2)/(m*sns_j)
-                         for A_j, sns_j in zip(As, sns[:, 0]))
+    if ls_grid is None:
+        ls_grid = compute_ls_grid(As, y_cpu, sns, m, ks, n_ls, l_eps)
 
     summaries = {}
     for k in ks:
         b_init = 0., B_zeros # Reset the initial value for each k
-
-        # Get l values
-        l_max = l_max_unscaled / k
-        l_min = l_max * l_eps
-        ls = torch.logspace(math.log10(l_min), math.log10(l_max), steps=n_ls)
-        # Put the ls in descending order
-        # That way, the support will go from 0 to full,
-        # and we can stop when that happens.
-        ls = sorted(ls, reverse=True)
-
+        ls = ls_grid[k]
         full_support = False
         for l in ls:
             # Convert k, l into l_1, l_2
@@ -270,3 +262,25 @@ def gel_paths2(gel_solve, gel_solve_kwargs, make_A, As, y, ks, n_ls, l_eps,
                 break
 
     return summaries
+
+
+def compute_ls_grid(As, y, sns, m, ks, n_ls, l_eps):
+    """Compute l values for each given k and return a dictionary mapping
+    k to a list (in decreasing order) of lambda values.
+
+    Arguments have the same meaning as in gel_paths2.
+    """
+    ls_grid = {}
+    # The bound is given by max{||A_j.T@(y - b_0)||/(m*sqrt{n_j}*k)}
+    # where b_0 = 1.T@y/m.
+    # So most things can be precomputed
+    l_max_b_0 = y.mean()
+    l_max_unscaled = max((A_j.t()@(y - l_max_b_0)).norm(p=2)/(m*sns_j)
+                         for A_j, sns_j in zip(As, sns[:, 0]))
+    for k in ks:
+        l_max = l_max_unscaled / k
+        l_min = l_max * l_eps
+        ls = torch.logspace(math.log10(l_min), math.log10(l_max), steps=n_ls)
+        ls = sorted(ls, reverse=True)
+        ls_grid[k] = ls
+    return ls_grid
