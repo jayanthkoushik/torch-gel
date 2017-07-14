@@ -220,6 +220,7 @@ def gel_paths2(gel_solve, gel_solve_kwargs, make_A, As, y, ks, n_ls, l_eps,
 
     if ls_grid is None:
         ls_grid = compute_ls_grid(As, y_cpu, sns[:, 0], m, ks, n_ls, l_eps)
+        l_maxs = None
     else:
         # Compute the l_max values to get good initializations
         l_maxs = compute_ls_grid(As, y_cpu, sns[:, 0], m, ks, 1, l_eps)
@@ -228,7 +229,7 @@ def gel_paths2(gel_solve, gel_solve_kwargs, make_A, As, y, ks, n_ls, l_eps,
     for k in ks:
         b_init = 0., B_zeros # Reset the initial value for each k
 
-        if ls_grid is not None:
+        if l_maxs is not None:
             # Solve with l_max to get a better initialization
             # This _greatly_ speeds up the optimization
             if verbose:
