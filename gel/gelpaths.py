@@ -219,7 +219,7 @@ def gel_paths2(gel_solve, gel_solve_kwargs, make_A, As, y, ks, n_ls, l_eps,
                                       gel_solve_kwargs["Is"]]
 
     if ls_grid is None:
-        ls_grid = compute_ls_grid(As, y_cpu, sns, m, ks, n_ls, l_eps)
+        ls_grid = compute_ls_grid(As, y_cpu, sns[:, 0], m, ks, n_ls, l_eps)
 
     summaries = {}
     for k in ks:
@@ -264,11 +264,12 @@ def gel_paths2(gel_solve, gel_solve_kwargs, make_A, As, y, ks, n_ls, l_eps,
     return summaries
 
 
-def compute_ls_grid(As, y, sns, m, ks, n_ls, l_eps):
+def compute_ls_grid(As, y, sns_vec, m, ks, n_ls, l_eps):
     """Compute l values for each given k and return a dictionary mapping
     k to a list (in decreasing order) of lambda values.
 
-    Arguments have the same meaning as in gel_paths2.
+    Arguments have the same meaning as in gel_paths2. sns_vec is a vector of
+    sns_j values as opposed to the matrix computed in gel_paths2.
     """
     ls_grid = {}
     # The bound is given by max{||A_j.T@(y - b_0)||/(m*sqrt{n_j}*k)}
@@ -276,7 +277,7 @@ def compute_ls_grid(As, y, sns, m, ks, n_ls, l_eps):
     # So most things can be precomputed
     l_max_b_0 = y.mean()
     l_max_unscaled = max((A_j.t()@(y - l_max_b_0)).norm(p=2)/(m*sns_j)
-                         for A_j, sns_j in zip(As, sns[:, 0]))
+                         for A_j, sns_j in zip(As, sns_vec))
     for k in ks:
         l_max = l_max_unscaled / k
         l_min = l_max * l_eps
