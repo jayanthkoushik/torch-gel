@@ -220,10 +220,24 @@ def gel_paths2(gel_solve, gel_solve_kwargs, make_A, As, y, ks, n_ls, l_eps,
 
     if ls_grid is None:
         ls_grid = compute_ls_grid(As, y_cpu, sns[:, 0], m, ks, n_ls, l_eps)
+    else:
+        # Compute the l_max values to get good initializations
+        l_maxs = compute_ls_grid(As, y_cpu, sns[:, 0], m, ks, 1, l_eps)
 
     summaries = {}
     for k in ks:
         b_init = 0., B_zeros # Reset the initial value for each k
+
+        if ls_grid is not None:
+            # Solve with l_max to get a better initialization
+            # This _greatly_ speeds up the optimization
+            if verbose:
+                print("Solving auxiliary problem to get good initialization",
+                      file=sys.stderr)
+            l_max = l_maxs[k][0]
+            b_init = gel_solve(A, y, k*l_max, (1.-k)*l_max, ns, b_init,
+                               verbose=verbose, **gel_solve_kwargs)
+
         ls = ls_grid[k]
         full_support = False
         for l in ls:
@@ -283,8 +297,12 @@ def compute_ls_grid(As, y, sns_vec, m, ks, n_ls, l_eps):
                          for A_j, sns_j in zip(As, sns_vec))
     for k in ks:
         l_max = l_max_unscaled / k
-        l_min = l_max * l_eps
-        ls = torch.logspace(math.log10(l_min), math.log10(l_max), steps=n_ls)
-        ls = sorted(ls, reverse=True)
-        ls_grid[k] = ls
+        if n_ls == 1:
+            ls_grid[k] = [l_max]
+        else:
+            l_min = l_max * l_eps
+            ls = torch.logspace(math.log10(l_min), math.log10(l_max),
+                                steps=n_ls)
+            ls = sorted(ls, reverse=True)
+            ls_grid[k] = ls
     return ls_grid
