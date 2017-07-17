@@ -83,7 +83,8 @@ def _find_support(B, ns, supp_thresh):
 
 
 def gel_paths(gel_solve, gel_solve_kwargs, make_A, As, y, l_1s, l_2s, l_rs,
-              summ_fun, supp_thresh=1e-6, use_gpu=False, verbose=False):
+              summ_fun, supp_thresh=1e-6, use_gpu=False, verbose=False,
+              aux_rel_tol=1e-3):
     """Solve group elastic net to find support and perform ridge on it.
 
     The problem is solved for multiple values of l_1, l_2, and l_r (the ridge
@@ -103,6 +104,7 @@ def gel_paths(gel_solve, gel_solve_kwargs, make_A, As, y, l_1s, l_2s, l_rs,
             considered 0.
         use_gpu: whether or not to use GPU.
         verbose: enable/disable verbosity.
+        aux_rel_tol: relative tolerance for solving auxiliary problems.
 
     The function returns a dictionary mapping (l_1, l_2, l_r) values to their
     summaries.
@@ -128,6 +130,7 @@ def gel_paths(gel_solve, gel_solve_kwargs, make_A, As, y, l_1s, l_2s, l_rs,
     X = torch.cat(As, dim=1)
     X = X.t() # ridge_paths expects a pxm matrix
 
+    y_cpu = y
     if use_gpu:
         # Move tensors to GPU
         B_zeros = B_zeros.cuda()
@@ -141,9 +144,29 @@ def gel_paths(gel_solve, gel_solve_kwargs, make_A, As, y, l_1s, l_2s, l_rs,
             gel_solve_kwargs["Is"] = [I_j.cuda() for I_j in
                                       gel_solve_kwargs["Is"]]
 
+    gel_solve_kwargs_aux = gel_solve_kwargs.copy()
+    gel_solve_kwargs_aux["rel_tol"] = aux_rel_tol
     summaries = {}
+
     for l_2 in l_2s:
-        b_init = 0., B_zeros # Reset the initial value for each l_2
+        # Find a good initialization to solve for the first (l_1, l_2) pair
+        if l_1s[0] != 0:
+            # Find k corresponding to the l_1, l_2
+            # l_1 = k*l, and l_2 = (1 - k)*l
+            k = 1. / (1. + l_2/l_1s[0])
+
+            # Compute l_max corresponding to k
+            l_aux = compute_ls_grid(As, y_cpu, sns[:, 0], m, [k], 1, None)[k][0]
+
+            # Solve with k, l_aux
+            if verbose:
+                print("Solving auxiliary problem to get good initialization",
+                      file=sys.stderr)
+            b_init = gel_solve(A, y, k*l_aux, (1.-k)*l_aux, ns, (0., B_zeros),
+                               verbose=verbose, **gel_solve_kwargs)
+            if verbose:
+                print("Done solving auxiliary problem", file=sys.stderr)
+
         for l_1 in l_1s:
             # Solve group elastic net initializing at the previous solution
             b_0, B = gel_solve(A, y, l_1, l_2, ns, b_init, verbose=verbose,
