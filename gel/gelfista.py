@@ -204,7 +204,7 @@ def gel_solve(A, y, l_1, l_2, ns, b_init=None, t_init=None, ls_beta=None,
         # Check tolerance exit criterion
         # Break if the relative change in 2-norm between b and
         # b_prev is less than tol
-        if (delta_norm < rel_tol * b_norm)[0, 0]:
+        if (delta_norm <= rel_tol * b_norm)[0, 0]:
             break
 
     pbar.close()

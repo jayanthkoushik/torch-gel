@@ -121,7 +121,7 @@ def block_solve_agd(r_j, A_j, a_1_j, a_2_j, m, b_j_init, t_init=None,
 
         # Check tolerance exit criterion
         # Exit when the relative change is less than the tolerance
-        if b_diff_norm < rel_tol * b_j_norm:
+        if b_diff_norm <= rel_tol * b_j_norm:
             break
 
     pbar.close()
@@ -286,7 +286,7 @@ def gel_solve(A, y, l_1, l_2, ns, b_init=None, block_solve_fun=block_solve_agd,
         k += 1
 
         # Check tolerance exit criterion
-        if (delta_norm < rel_tol * b_norm)[0, 0]:
+        if (delta_norm <= rel_tol * b_norm)[0, 0]:
             break
         b_0_prev, B_prev = b_0, B
 
