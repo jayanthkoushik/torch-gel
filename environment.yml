@@ -6,6 +6,6 @@ channels:
 dependencies:
     - python>=3.5
     - pytorch=0.4.*
-    - cvxpy>=0.4
+    - cvxpy>=0.4,<1.0
     - cvxopt
     - tqdm>=4.0

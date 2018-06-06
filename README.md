@@ -1,6 +1,6 @@
 # torch-gel
 
-<!-- [![Travis][travis-badge]][travis] -->
+[![Travis][travis-badge]][travis]
 [![PyPI][pypi-badge]][pypi]
 [![PyPi - Python Version][pypi-version-badge]][pypi]
 [![GitHub license][license-badge]][license]

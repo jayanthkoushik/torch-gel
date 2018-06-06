@@ -12,8 +12,8 @@ matrix:
 
 install:
   - pip install $TORCH_WHL
-  - pip install tqdm>=4.0
-  - pip install cvxpy>=0.4
+  - pip install "tqdm>=4.0"
+  - pip install "cvxpy>=0.4,<1.0"
   - pip install cvxopt
 
 script:
