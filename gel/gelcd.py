@@ -41,37 +41,53 @@ def _f_j(q_j, b_j_norm, a_1_j, a_2_j, m):
 
         (1/2m)||q_j||^2 + a_1||b_j|| + (a_2/2)||b_j||^2
     """
-    return (q_j@q_j)/(2.*m) + a_1_j*b_j_norm + (a_2_j/2.)*(b_j_norm**2)
+    return (q_j @ q_j) / (2. * m) + a_1_j * b_j_norm + (a_2_j / 2.) * (
+        b_j_norm ** 2
+    )
 
 
 def _grad_j(q_j, A_j, b_j, b_j_norm, a_1_j, a_2_j, m):
     """Compute the gradient with respect to one of the coefficients."""
-    return A_j.t()@q_j/(-m) + b_j*(a_1_j/b_j_norm + a_2_j)
+    return A_j.t() @ q_j / (-m) + b_j * (a_1_j / b_j_norm + a_2_j)
 
 
 def _hess_j(C_j, I_j, b_j, b_j_norm, a_1_j, a_2_j):
     """Compute the Hessian with respect to one of the coefficients."""
     D_j = torch.ger(b_j, b_j)
-    return C_j + (a_1_j/b_j_norm)*(I_j - D_j/(b_j_norm**2)) + a_2_j*I_j
+    return C_j + (a_1_j / b_j_norm) * (
+        I_j - D_j / (b_j_norm ** 2)
+    ) + a_2_j * I_j
 
 
-def block_solve_agd(r_j, A_j, a_1_j, a_2_j, m, b_j_init, t_init=None,
-                    ls_beta=None, max_iters=None, rel_tol=1e-6, verbose=False):
+def block_solve_agd(
+    r_j,
+    A_j,
+    a_1_j,
+    a_2_j,
+    m,
+    b_j_init,
+    t_init=None,
+    ls_beta=None,
+    max_iters=None,
+    rel_tol=1e-6,
+    verbose=False,
+):
     """Solve the optimization problem for a single block with accelerated
     gradient descent."""
     b_j = b_j_init
     b_j_prev = b_j
-    k = 1 # Iteration number
-    t = 1 # Initial step length (used if t_init is None)
-    pbar_stats = {} # Stats for the progress bar
-    pbar = tqdm.tqdm(desc="Solving block with AGD", disable=not verbose,
-                     leave=False)
+    k = 1  # Iteration number
+    t = 1  # Initial step length (used if t_init is None)
+    pbar_stats = {}  # Stats for the progress bar
+    pbar = tqdm.tqdm(
+        desc="Solving block with AGD", disable=not verbose, leave=False
+    )
 
     while True:
         # Compute the v terms
         mom = (k - 2) / (k + 1.)
-        v_j = b_j + mom*(b_j - b_j_prev)
-        q_v_j = r_j - A_j@v_j
+        v_j = b_j + mom * (b_j - b_j_prev)
+        q_v_j = r_j - A_j @ v_j
         v_j_norm = v_j.norm(p=2)
         f_v_j = _f_j(q_v_j, v_j_norm, a_1_j, a_2_j, m)
         grad_v_j = _grad_j(q_v_j, A_j, v_j, v_j_norm, a_1_j, a_2_j, m)
@@ -82,7 +98,7 @@ def block_solve_agd(r_j, A_j, a_1_j, a_2_j, m, b_j_init, t_init=None,
         if t_init is not None:
             t = t_init
         while True:
-            b_j = v_j - t*grad_v_j # Gradient descent update
+            b_j = v_j - t * grad_v_j  # Gradient descent update
 
             if ls_beta is None:
                 # Don't perform line search
@@ -91,12 +107,12 @@ def block_solve_agd(r_j, A_j, a_1_j, a_2_j, m, b_j_init, t_init=None,
             # Line search: exit when
             #   f_j(b_j) <= f_j(v_j) + grad_v_j.T@(b_j - v_j) +
             #       (1/2t)||b_j - v_j||^2
-            q_b_j = r_j - A_j@b_j
+            q_b_j = r_j - A_j @ b_j
             b_j_norm = b_j.norm(p=2)
             f_b_j = _f_j(q_b_j, b_j_norm, a_1_j, a_2_j, m)
             b_v_diff = b_j - v_j
-            c2 = grad_v_j@b_v_diff
-            c3 = b_v_diff@b_v_diff / (2.*t)
+            c2 = grad_v_j @ b_v_diff
+            c3 = b_v_diff @ b_v_diff / (2. * t)
 
             if f_b_j <= f_v_j + c2 + c3:
                 break
@@ -128,26 +144,41 @@ def block_solve_agd(r_j, A_j, a_1_j, a_2_j, m, b_j_init, t_init=None,
     return b_j
 
 
-def block_solve_newton(r_j, A_j, a_1_j, a_2_j, m, b_j_init, C_j, I_j,
-                       ls_alpha=0.5, ls_beta=0.9, max_iters=20, tol=1e-8,
-                       verbose=False):
+def block_solve_newton(
+    r_j,
+    A_j,
+    a_1_j,
+    a_2_j,
+    m,
+    b_j_init,
+    C_j,
+    I_j,
+    ls_alpha=0.5,
+    ls_beta=0.9,
+    max_iters=20,
+    tol=1e-8,
+    verbose=False,
+):
     """Solve the optimization problem for a single block with
     Newton's method."""
     b_j = b_j_init
     k = 1
-    pbar_stats = {} # Stats for the progress bar
-    pbar = tqdm.tqdm(desc="Solving block with Newton's method",
-                     disable=not verbose, leave=False)
+    pbar_stats = {}  # Stats for the progress bar
+    pbar = tqdm.tqdm(
+        desc="Solving block with Newton's method",
+        disable=not verbose,
+        leave=False,
+    )
 
     while True:
         # First, compute the Newton step and decrement
-        q_b_j = r_j - A_j@b_j
+        q_b_j = r_j - A_j @ b_j
         b_j_norm = b_j.norm(p=2)
         grad_b_j = _grad_j(q_b_j, A_j, b_j, b_j_norm, a_1_j, a_2_j, m)
         hess_b_j = _hess_j(C_j, I_j, b_j, b_j_norm, a_1_j, a_2_j)
         hessinv_b_j = torch.inverse(hess_b_j)
-        v_j = hessinv_b_j@grad_b_j
-        dec_j = grad_b_j@(hessinv_b_j@grad_b_j)
+        v_j = hessinv_b_j @ grad_b_j
+        dec_j = grad_b_j @ (hessinv_b_j @ grad_b_j)
 
         # Check tolerance stopping criterion
         # Exit if dec_j / 2 is less than the tolerance
@@ -157,15 +188,15 @@ def block_solve_newton(r_j, A_j, a_1_j, a_2_j, m, b_j_init, C_j, I_j,
         # Perform backtracking line search
         t = 1
         f_b_j = _f_j(q_b_j, b_j_norm, a_1_j, a_2_j, m)
-        k_j = grad_b_j@v_j
+        k_j = grad_b_j @ v_j
         while True:
             # Compute the update and evaluate function at that point
-            bp_j = b_j - t*v_j
-            q_bp_j = r_j - A_j@bp_j
+            bp_j = b_j - t * v_j
+            q_bp_j = r_j - A_j @ bp_j
             bp_j_norm = bp_j.norm(p=2)
             f_bp_j = _f_j(q_bp_j, bp_j_norm, a_1_j, a_2_j, m)
 
-            if f_bp_j <= f_b_j - ls_alpha*t*k_j:
+            if f_bp_j <= f_b_j - ls_alpha * t * k_j:
                 b_j = bp_j
                 break
             else:
@@ -176,7 +207,7 @@ def block_solve_newton(r_j, A_j, a_1_j, a_2_j, m, b_j_init, C_j, I_j,
             b_j.fill_(1e-3)
 
         pbar_stats["t"] = "{:.2g}".format(t)
-        pbar_stats["1/2 newton decrement"] = "{:.2g}".format(dec_j/2)
+        pbar_stats["1/2 newton decrement"] = "{:.2g}".format(dec_j / 2)
         pbar.set_postfix(pbar_stats)
         pbar.update()
 
@@ -196,9 +227,21 @@ def make_A(As, ns, use_gpu=False):
     return As
 
 
-def gel_solve(A, y, l_1, l_2, ns, b_init=None, block_solve_fun=block_solve_agd,
-              block_solve_kwargs={}, max_cd_iters=None, rel_tol=1e-6,
-              Cs=None, Is=None, verbose=False):
+def gel_solve(
+    A,
+    y,
+    l_1,
+    l_2,
+    ns,
+    b_init=None,
+    block_solve_fun=block_solve_agd,
+    block_solve_kwargs={},
+    max_cd_iters=None,
+    rel_tol=1e-6,
+    Cs=None,
+    Is=None,
+    verbose=False,
+):
     """Solve a group elastic net problem.
 
     Arguments:
@@ -228,32 +271,38 @@ def gel_solve(A, y, l_1, l_2, ns, b_init=None, block_solve_fun=block_solve_agd,
         b_init = 0., torch.zeros(p, ns.max())
 
     sns = ns.float().sqrt()
-    a_1 = l_1*sns
-    ma_1 = m*a_1
-    a_2 = 2*l_2*sns
+    a_1 = l_1 * sns
+    ma_1 = m * a_1
+    a_2 = 2 * l_2 * sns
     b_0, B = b_init
     b_0_prev, B_prev = b_0, B
-    k = 1 # Iteration number
-    pbar_stats = {} # Stats for the outer progress bar
+    k = 1  # Iteration number
+    pbar_stats = {}  # Stats for the outer progress bar
     pbar = tqdm.tqdm(
         desc="Solving gel with CD (l_1 {:.2g}, l_2 {:.2g})".format(l_1, l_2),
-        disable=not verbose)
+        disable=not verbose,
+    )
 
     while True:
         # First minimize with respect to b_0. This has a closed form solution
         # given by
         #   b_0 = 1.T@(y - sum_j A_j@b_j) / m
-        b_0 = (y - sum(A[j]@B[j, :ns[j]] for j in range(p))).sum() / m
+        b_0 = (y - sum(A[j] @ B[j, :ns[j]] for j in range(p))).sum() / m
 
         # Now, minimize with respect to each b_j
-        for j in tqdm.trange(p, desc="Solving individual blocks", ncols=80,
-                             disable=not verbose, leave=False):
-            r_j = y - b_0 - sum(A[k]@B[k, :ns[k]] for k in range(p) if k != j)
+        for j in tqdm.trange(
+            p,
+            desc="Solving individual blocks",
+            ncols=80,
+            disable=not verbose,
+            leave=False,
+        ):
+            r_j = y - b_0 - sum(A[k] @ B[k, :ns[k]] for k in range(p) if k != j)
 
             # Check if b_j must be set to 0
             # The condition is
             #   ||A_j.T@r_j|| <= m*a_1
-            if (A[j].t()@r_j).norm(p=2) <= ma_1[j]:
+            if (A[j].t() @ r_j).norm(p=2) <= ma_1[j]:
                 B[j] = 0
             else:
                 # Otherwise, minimize
@@ -266,15 +315,24 @@ def gel_solve(A, y, l_1, l_2, ns, b_init=None, block_solve_fun=block_solve_agd,
                     block_solve_kwargs["C_j"] = Cs[j]
                     block_solve_kwargs["I_j"] = Is[j]
 
-                B[j, :ns[j]] = block_solve_fun(r_j, A[j], a_1[j], a_2[j], m,
-                                               B[j, :ns[j]], verbose=verbose,
-                                               **block_solve_kwargs)
+                B[j, :ns[j]] = block_solve_fun(
+                    r_j,
+                    A[j],
+                    a_1[j],
+                    a_2[j],
+                    m,
+                    B[j, :ns[j]],
+                    verbose=verbose,
+                    **block_solve_kwargs
+                )
 
         # Compute relative change in b
         b_0_diff = b_0 - b_0_prev
         B_diff = B - B_prev
-        delta_norm = (b_0_diff**2 + (B_diff**2).sum(dim=0).sum(dim=1)).sqrt()
-        b_norm = (b_0**2 + (B**2).sum(dim=0).sum(dim=1)).sqrt()
+        delta_norm = (
+            b_0_diff ** 2 + (B_diff ** 2).sum(dim=0).sum(dim=1)
+        ).sqrt()
+        b_norm = (b_0 ** 2 + (B ** 2).sum(dim=0).sum(dim=1)).sqrt()
 
         pbar_stats["rel change"] = "{:.2g}".format((delta_norm / b_norm)[0, 0])
         pbar.set_postfix(pbar_stats)

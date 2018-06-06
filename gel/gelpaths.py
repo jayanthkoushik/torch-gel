@@ -50,22 +50,30 @@ def ridge_paths(X, y, support, lambdas, summ_fun, verbose=False):
 
     if support is None:
         # Nothing to do
-        for l in tqdm.tqdm(lambdas, desc="Solving ridge regressions", ncols=80,
-                           disable=not verbose):
+        for l in tqdm.tqdm(
+            lambdas,
+            desc="Solving ridge regressions",
+            ncols=80,
+            disable=not verbose,
+        ):
             summaries[l] = summ_fun(None, None)
         return summaries
 
     else:
         # Setup
-        e, V = torch.symeig(X.t()@X, eigenvectors=True)
-        p = X@y # X@y
-        Q = X@V # X@V
-        r = Q.t()@p # (X@V).T@X@y
+        e, V = torch.symeig(X.t() @ X, eigenvectors=True)
+        p = X @ y  # X@y
+        Q = X @ V  # X@V
+        r = Q.t() @ p  # (X@V).T@X@y
 
         # Main loop
-        for l in tqdm.tqdm(lambdas, desc="Solving ridge regressions", ncols=80,
-                           disable=not verbose):
-            b = (1./l)*(p - Q@(r / (e + l)))
+        for l in tqdm.tqdm(
+            lambdas,
+            desc="Solving ridge regressions",
+            ncols=80,
+            disable=not verbose,
+        ):
+            b = (1. / l) * (p - Q @ (r / (e + l)))
             summaries[l] = summ_fun(support, b)
 
     return summaries
@@ -75,16 +83,27 @@ def _find_support(B, ns, supp_thresh):
     """Find features with non-zero coefficients."""
     try:
         support = (B.norm(p=2, dim=1) >= supp_thresh).expand_as(B)
-        support = torch.cat([s_j[:n_j] for s_j, n_j in
-                             zip(support, ns)])
+        support = torch.cat([s_j[:n_j] for s_j, n_j in zip(support, ns)])
         return torch.nonzero(support)[:, 0]
     except IndexError:
         return None
 
 
-def gel_paths(gel_solve, gel_solve_kwargs, make_A, As, y, l_1s, l_2s, l_rs,
-              summ_fun, supp_thresh=1e-6, use_gpu=False, verbose=False,
-              aux_rel_tol=1e-3):
+def gel_paths(
+    gel_solve,
+    gel_solve_kwargs,
+    make_A,
+    As,
+    y,
+    l_1s,
+    l_2s,
+    l_rs,
+    summ_fun,
+    supp_thresh=1e-6,
+    use_gpu=False,
+    verbose=False,
+    aux_rel_tol=1e-3,
+):
     """Solve group elastic net to find support and perform ridge on it.
 
     The problem is solved for multiple values of l_1, l_2, and l_r (the ridge
@@ -119,7 +138,7 @@ def gel_paths(gel_solve, gel_solve_kwargs, make_A, As, y, l_1s, l_2s, l_rs,
     l_1s = sorted(l_1s, reverse=True)
     p = len(As)
     m = As[0].size()[0]
-    ns = torch.LongTensor([A_j.size()[1] for A_j in As])
+    ns = torch.tensor([A_j.size()[1] for A_j in As])
     B_zeros = torch.zeros(p, ns.max())
     sns = ns.float().sqrt().unsqueeze(1).expand_as(B_zeros)
 
@@ -128,7 +147,7 @@ def gel_paths(gel_solve, gel_solve_kwargs, make_A, As, y, l_1s, l_2s, l_rs,
 
     # Form X which combines all the As
     X = torch.cat(As, dim=1)
-    X = X.t() # ridge_paths expects a pxm matrix
+    X = X.t()  # ridge_paths expects a pxm matrix
 
     y_cpu = y
     if use_gpu:
@@ -138,11 +157,13 @@ def gel_paths(gel_solve, gel_solve_kwargs, make_A, As, y, l_1s, l_2s, l_rs,
         sns = sns.cuda()
         y = y.cuda()
         if "Cs" in gel_solve_kwargs:
-            gel_solve_kwargs["Cs"] = [C_j.cuda() for C_j in
-                                      gel_solve_kwargs["Cs"]]
+            gel_solve_kwargs["Cs"] = [
+                C_j.cuda() for C_j in gel_solve_kwargs["Cs"]
+            ]
         if "Is" in gel_solve_kwargs:
-            gel_solve_kwargs["Is"] = [I_j.cuda() for I_j in
-                                      gel_solve_kwargs["Is"]]
+            gel_solve_kwargs["Is"] = [
+                I_j.cuda() for I_j in gel_solve_kwargs["Is"]
+            ]
 
     gel_solve_kwargs_aux = gel_solve_kwargs.copy()
     gel_solve_kwargs_aux["rel_tol"] = aux_rel_tol
@@ -153,24 +174,35 @@ def gel_paths(gel_solve, gel_solve_kwargs, make_A, As, y, l_1s, l_2s, l_rs,
         if l_1s[0] != 0:
             # Find k corresponding to the l_1, l_2
             # l_1 = k*l, and l_2 = (1 - k)*l
-            k = 1. / (1. + l_2/l_1s[0])
+            k = 1. / (1. + l_2 / l_1s[0])
 
             # Compute l_max corresponding to k
             l_aux = compute_ls_grid(As, y_cpu, sns[:, 0], m, [k], 1, None)[k][0]
 
             # Solve with k, l_aux
             if verbose:
-                print("Solving auxiliary problem to get good initialization",
-                      file=sys.stderr)
-            b_init = gel_solve(A, y, k*l_aux, (1.-k)*l_aux, ns, (0., B_zeros),
-                               verbose=verbose, **gel_solve_kwargs)
+                print(
+                    "Solving auxiliary problem to get good initialization",
+                    file=sys.stderr,
+                )
+            b_init = gel_solve(
+                A,
+                y,
+                k * l_aux,
+                (1. - k) * l_aux,
+                ns,
+                (0., B_zeros),
+                verbose=verbose,
+                **gel_solve_kwargs
+            )
             if verbose:
                 print("Done solving auxiliary problem", file=sys.stderr)
 
         for l_1 in l_1s:
             # Solve group elastic net initializing at the previous solution
-            b_0, B = gel_solve(A, y, l_1, l_2, ns, b_init, verbose=verbose,
-                               **gel_solve_kwargs)
+            b_0, B = gel_solve(
+                A, y, l_1, l_2, ns, b_init, verbose=verbose, **gel_solve_kwargs
+            )
             b_init = b_0, B
 
             # Find support
@@ -186,8 +218,9 @@ def gel_paths(gel_solve, gel_solve_kwargs, make_A, As, y, l_1s, l_2s, l_rs,
                     X_supp = X_supp.cuda()
             else:
                 X_supp = None
-            ridge_summaries = ridge_paths(X_supp, y, support, l_rs, summ_fun,
-                                          verbose)
+            ridge_summaries = ridge_paths(
+                X_supp, y, support, l_rs, summ_fun, verbose
+            )
             del X_supp
             for l_r, summary in ridge_summaries.items():
                 summaries[(l_1, l_2, l_r)] = summary
@@ -197,9 +230,23 @@ def gel_paths(gel_solve, gel_solve_kwargs, make_A, As, y, l_1s, l_2s, l_rs,
     return summaries
 
 
-def gel_paths2(gel_solve, gel_solve_kwargs, make_A, As, y, ks, n_ls, l_eps,
-               l_rs, summ_fun, supp_thresh=1e-6, use_gpu=False, verbose=False,
-               ls_grid=None, aux_rel_tol=1e-3):
+def gel_paths2(
+    gel_solve,
+    gel_solve_kwargs,
+    make_A,
+    As,
+    y,
+    ks,
+    n_ls,
+    l_eps,
+    l_rs,
+    summ_fun,
+    supp_thresh=1e-6,
+    use_gpu=False,
+    verbose=False,
+    ls_grid=None,
+    aux_rel_tol=1e-3,
+):
     """Solve for paths with a reparametrized group elastic net.
 
     The regularization terms can be rewritten as
@@ -237,11 +284,13 @@ def gel_paths2(gel_solve, gel_solve_kwargs, make_A, As, y, ks, n_ls, l_eps,
         sns = sns.cuda()
         y = y.cuda()
         if "Cs" in gel_solve_kwargs:
-            gel_solve_kwargs["Cs"] = [C_j.cuda() for C_j in
-                                      gel_solve_kwargs["Cs"]]
+            gel_solve_kwargs["Cs"] = [
+                C_j.cuda() for C_j in gel_solve_kwargs["Cs"]
+            ]
         if "Is" in gel_solve_kwargs:
-            gel_solve_kwargs["Is"] = [I_j.cuda() for I_j in
-                                      gel_solve_kwargs["Is"]]
+            gel_solve_kwargs["Is"] = [
+                I_j.cuda() for I_j in gel_solve_kwargs["Is"]
+            ]
 
     if ls_grid is None:
         ls_grid = compute_ls_grid(As, y_cpu, sns[:, 0], m, ks, n_ls, l_eps)
@@ -254,7 +303,7 @@ def gel_paths2(gel_solve, gel_solve_kwargs, make_A, As, y, ks, n_ls, l_eps,
 
     summaries = {}
     for k in ks:
-        b_init = 0., B_zeros # Reset the initial value for each k
+        b_init = 0., B_zeros  # Reset the initial value for each k
         ls = ls_grid[k]
         full_support = False
 
@@ -262,17 +311,28 @@ def gel_paths2(gel_solve, gel_solve_kwargs, make_A, As, y, ks, n_ls, l_eps,
             # Solve with self l values to get a better initialization
             # This _greatly_ speeds up the optimization
             if verbose:
-                print("Solving auxiliary problems to get good initialization",
-                      file=sys.stderr)
+                print(
+                    "Solving auxiliary problems to get good initialization",
+                    file=sys.stderr,
+                )
             ls_self = ls_grid_self[k]
             for l_self in ls_self:
                 if l_self < ls[0]:
                     break
-                b_init = gel_solve(A, y, k*l_self, (1.-k)*l_self, ns, b_init,
-                                   verbose=verbose, **gel_solve_kwargs_aux)
+                b_init = gel_solve(
+                    A,
+                    y,
+                    k * l_self,
+                    (1. - k) * l_self,
+                    ns,
+                    b_init,
+                    verbose=verbose,
+                    **gel_solve_kwargs_aux
+                )
             if verbose:
                 print("Done solving auxiliary problems", file=sys.stderr)
 
+        ridge_summaries = None
         for l in ls:
             if full_support:
                 # Just copy the previous summaries
@@ -281,11 +341,12 @@ def gel_paths2(gel_solve, gel_solve_kwargs, make_A, As, y, ks, n_ls, l_eps,
                 continue
 
             # Convert k, l into l_1, l_2
-            l_1, l_2 = k*l, (1.-k)*l
+            l_1, l_2 = k * l, (1. - k) * l
 
             # Rest is similar to gel_paths
-            b_0, B = gel_solve(A, y, l_1, l_2, ns, b_init, verbose=verbose,
-                               **gel_solve_kwargs)
+            b_0, B = gel_solve(
+                A, y, l_1, l_2, ns, b_init, verbose=verbose, **gel_solve_kwargs
+            )
             b_init = b_0, B
 
             # Find support
@@ -303,8 +364,9 @@ def gel_paths2(gel_solve, gel_solve_kwargs, make_A, As, y, ks, n_ls, l_eps,
                     X_supp = X_supp.cuda()
             else:
                 X_supp = None
-            ridge_summaries = ridge_paths(X_supp, y, support, l_rs, summ_fun,
-                                          verbose)
+            ridge_summaries = ridge_paths(
+                X_supp, y, support, l_rs, summ_fun, verbose
+            )
             del X_supp
             for l_r, summary in ridge_summaries.items():
                 summaries[(k, l, l_r)] = summary
@@ -326,16 +388,19 @@ def compute_ls_grid(As, y, sns_vec, m, ks, n_ls, l_eps):
     # where b_0 = 1.T@y/m.
     # So most things can be precomputed
     l_max_b_0 = y.mean()
-    l_max_unscaled = max((A_j.t()@(y - l_max_b_0)).norm(p=2)/(m*sns_j)
-                         for A_j, sns_j in zip(As, sns_vec))
+    l_max_unscaled = max(
+        (A_j.t() @ (y - l_max_b_0)).norm(p=2) / (m * sns_j)
+        for A_j, sns_j in zip(As, sns_vec)
+    )
     for k in ks:
         l_max = l_max_unscaled / k
         if n_ls == 1:
             ls_grid[k] = [l_max]
         else:
             l_min = l_max * l_eps
-            ls = torch.logspace(math.log10(l_min), math.log10(l_max),
-                                steps=n_ls)
+            ls = torch.logspace(
+                math.log10(l_min), math.log10(l_max), steps=n_ls
+            )
             ls = sorted(ls, reverse=True)
             ls_grid[k] = ls
     return ls_grid

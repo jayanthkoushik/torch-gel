@@ -50,9 +50,9 @@ def _prox(B, a_1, a_2, t):
     passed to the function since it is not changed.
     """
     # First compute assuming 'if' part of the condition
-    ta_1 = t*a_1
+    ta_1 = t * a_1
     norms = B.norm(p=2, dim=1).expand_as(B)
-    shrinkage = (norms - ta_1) / (1 + t*a_2)
+    shrinkage = (norms - ta_1) / (1 + t * a_2)
     prox = B * shrinkage / norms
 
     # Threshold to zero if ||x_j|| is below threshold
@@ -72,7 +72,7 @@ def _g(A, b_0, B, y, m):
     """Compute g(b)."""
     # m is the number of samples
     r = _r(A, b_0, B, y)
-    return r@r / (2.*m)
+    return r @ r / (2. * m)
 
 
 def _grad(A, b_0, B, y, p, m):
@@ -108,8 +108,19 @@ def make_A(As, ns, use_gpu=False):
     return A
 
 
-def gel_solve(A, y, l_1, l_2, ns, b_init=None, t_init=None, ls_beta=None,
-              max_iters=None, rel_tol=1e-6, verbose=False):
+def gel_solve(
+    A,
+    y,
+    l_1,
+    l_2,
+    ns,
+    b_init=None,
+    t_init=None,
+    ls_beta=None,
+    max_iters=None,
+    rel_tol=1e-6,
+    verbose=False,
+):
     """Solve a group elastic net problem.
 
     Arguments:
@@ -138,20 +149,21 @@ def gel_solve(A, y, l_1, l_2, ns, b_init=None, t_init=None, ls_beta=None,
     b_0, B = b_init
     b_0_prev, B_prev = b_0, B
     sns = ns.float().sqrt().unsqueeze(1).expand_as(B)
-    a_1 = l_1*sns
-    a_2 = 2*l_2*sns
-    k = 1 # Iteration number
-    t = 1 # Initial step length (used if t_init is None)
-    pbar_stats = {} # Stats for the progress bar
+    a_1 = l_1 * sns
+    a_2 = 2 * l_2 * sns
+    k = 1  # Iteration number
+    t = 1  # Initial step length (used if t_init is None)
+    pbar_stats = {}  # Stats for the progress bar
     pbar = tqdm.tqdm(
         desc="Solving gel with FISTA (l_1 {:.2g}, l_2 {:.2g})".format(l_1, l_2),
-        disable=not verbose)
+        disable=not verbose,
+    )
 
     while True:
         # Compute the v terms
         mom = (k - 2) / (k + 1.)
-        v_0 = b_0 + mom*(b_0 - b_0_prev)
-        V = B + mom*(B - B_prev)
+        v_0 = b_0 + mom * (b_0 - b_0_prev)
+        V = B + mom * (B - B_prev)
         g_v = _g(A, v_0, V, y, m)
         grad_v_0, grad_V = _grad(A, v_0, V, y, p, m)
 
@@ -162,8 +174,8 @@ def gel_solve(A, y, l_1, l_2, ns, b_init=None, t_init=None, ls_beta=None,
             t = t_init
         while True:
             # Compute the update based on gradient, then apply prox
-            b_0 = v_0 - t*grad_v_0
-            B = V - t*grad_V
+            b_0 = v_0 - t * grad_v_0
+            B = V - t * grad_V
             B = _prox(B, a_1, a_2, t)
 
             if ls_beta is None:
@@ -176,9 +188,9 @@ def gel_solve(A, y, l_1, l_2, ns, b_init=None, t_init=None, ls_beta=None,
             b0_v0_diff = b_0 - v_0
             B_V_diff = B - V
             # grad_v.T@(b - v):
-            c_2 = grad_v_0*b0_v0_diff + (grad_V*B_V_diff).sum()
+            c_2 = grad_v_0 * b0_v0_diff + (grad_V * B_V_diff).sum()
             # (1/2t)||b - v||^2:
-            c_3 = (b0_v0_diff**2 + (B_V_diff**2).sum()) / (2.*t)
+            c_3 = (b0_v0_diff ** 2 + (B_V_diff ** 2).sum()) / (2. * t)
 
             if g_b <= g_v + c_2 + c_3:
                 break
@@ -188,8 +200,10 @@ def gel_solve(A, y, l_1, l_2, ns, b_init=None, t_init=None, ls_beta=None,
         # Compute relative change in b
         b_0_diff = b_0 - b_0_prev
         B_diff = B - B_prev
-        delta_norm = (b_0_diff**2 + (B_diff**2).sum(dim=0).sum(dim=1)).sqrt()
-        b_norm = (b_0**2 + (B**2).sum(dim=0).sum(dim=1)).sqrt()
+        delta_norm = (
+            b_0_diff ** 2 + (B_diff ** 2).sum(dim=0).sum(dim=1)
+        ).sqrt()
+        b_norm = (b_0 ** 2 + (B ** 2).sum(dim=0).sum(dim=1)).sqrt()
 
         pbar_stats["t"] = "{:.2g}".format(t)
         pbar_stats["rel change"] = "{:.2g}".format((delta_norm / b_norm)[0, 0])
