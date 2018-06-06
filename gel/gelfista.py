@@ -51,7 +51,7 @@ def _prox(B, a_1, a_2, t):
     """
     # First compute assuming 'if' part of the condition
     ta_1 = t * a_1
-    norms = B.norm(p=2, dim=1).expand_as(B)
+    norms = B.norm(p=2, dim=1, keepdim=True).expand_as(B)
     shrinkage = (norms - ta_1) / (1 + t * a_2)
     prox = B * shrinkage / norms
 
@@ -200,13 +200,11 @@ def gel_solve(
         # Compute relative change in b
         b_0_diff = b_0 - b_0_prev
         B_diff = B - B_prev
-        delta_norm = (
-            b_0_diff ** 2 + (B_diff ** 2).sum(dim=0).sum(dim=1)
-        ).sqrt()
-        b_norm = (b_0 ** 2 + (B ** 2).sum(dim=0).sum(dim=1)).sqrt()
+        delta_norm = (b_0_diff ** 2 + (B_diff ** 2).sum()).sqrt()
+        b_norm = (b_0 ** 2 + (B ** 2).sum()).sqrt()
 
         pbar_stats["t"] = "{:.2g}".format(t)
-        pbar_stats["rel change"] = "{:.2g}".format((delta_norm / b_norm)[0, 0])
+        pbar_stats["rel change"] = "{:.2g}".format((delta_norm / b_norm).item())
         pbar.set_postfix(pbar_stats)
         pbar.update()
 
@@ -218,8 +216,8 @@ def gel_solve(
         # Check tolerance exit criterion
         # Break if the relative change in 2-norm between b and
         # b_prev is less than tol
-        if (delta_norm <= rel_tol * b_norm)[0, 0]:
+        if delta_norm.item() <= rel_tol * b_norm.item():
             break
 
     pbar.close()
-    return b_0, B
+    return float(b_0), B

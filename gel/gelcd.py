@@ -318,8 +318,8 @@ def gel_solve(
                 B[j, :ns[j]] = block_solve_fun(
                     r_j,
                     A[j],
-                    a_1[j],
-                    a_2[j],
+                    float(a_1[j]),
+                    float(a_2[j]),
                     m,
                     B[j, :ns[j]],
                     verbose=verbose,
@@ -329,12 +329,12 @@ def gel_solve(
         # Compute relative change in b
         b_0_diff = b_0 - b_0_prev
         B_diff = B - B_prev
-        delta_norm = (
-            b_0_diff ** 2 + (B_diff ** 2).sum(dim=0).sum(dim=1)
-        ).sqrt()
-        b_norm = (b_0 ** 2 + (B ** 2).sum(dim=0).sum(dim=1)).sqrt()
+        delta_norm = (b_0_diff ** 2 + (B_diff ** 2).sum()).sqrt()
+        b_norm = (b_0 ** 2 + (B ** 2).sum()).sqrt()
 
-        pbar_stats["rel change"] = "{:.2g}".format((delta_norm / b_norm)[0, 0])
+        pbar_stats["rel change"] = "{:.2g}".format(
+            delta_norm.item() / b_norm.item()
+        )
         pbar.set_postfix(pbar_stats)
         pbar.update()
 
@@ -344,9 +344,9 @@ def gel_solve(
         k += 1
 
         # Check tolerance exit criterion
-        if (delta_norm <= rel_tol * b_norm)[0, 0]:
+        if delta_norm.item() <= rel_tol * b_norm.item():
             break
         b_0_prev, B_prev = b_0, B
 
     pbar.close()
-    return b_0, B
+    return float(b_0), B

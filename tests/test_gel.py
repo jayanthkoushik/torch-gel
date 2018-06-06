@@ -54,7 +54,9 @@ def gel_solve_cvx(As, y, l_1, l_2, ns):
         b_j = np.asarray(bs[j].value)
         if ns[j] == 1:
             b_j = b_j.reshape(1)
-        B[j, :ns[j]] = torch.from_numpy(b_j)
+        else:
+            b_j = b_j[:, 0]
+        B[j, :ns[j]] = torch.from_numpy(b_j.astype(np.float32))
 
     return b_0, B
 
@@ -87,7 +89,9 @@ def block_solve_cvx(r_j, A_j, a_1_j, a_2_j, m, b_j_init, verbose=False):
     b_j = np.asarray(b_j.value)
     if A_j.shape[1] == 1:
         b_j = b_j.reshape(1)
-    return torch.from_numpy(b_j)
+    else:
+        b_j = b_j[:, 0]
+    return torch.from_numpy(b_j.astype(np.float32))
 
 
 def _b2vec(B, groups):
@@ -123,8 +127,8 @@ class TestGelBirthwt(unittest.TestCase):
         self.As = []
         for j in range(self.p):
             A_j = self.X[:, self.groups[j]]
-            self.As.append(torch.from_numpy(A_j))
-        self.yt = torch.from_numpy(self.y)
+            self.As.append(torch.from_numpy(A_j.astype(np.float32)))
+        self.yt = torch.from_numpy(self.y.astype(np.float32))
         self.ns = torch.tensor([len(g) for g in self.groups])
 
         # Solve with cvx
