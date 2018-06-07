@@ -22,6 +22,7 @@ setup(
     version=version,
     description="PyTorch implementation of group elastic net",
     long_description=long_description,
+    long_description_content_type="text/markdown",
     url="https://github.com/jayanthkoushik/torch-gel",
     author="Jayanth Koushik",
     author_email="jnkoushik@gmail.com",
