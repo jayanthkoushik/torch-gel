@@ -12,11 +12,16 @@ with open(version_file) as f:
 version_str_pattern = r'^__version__ = "(.*?)"$'
 version = re.search(version_str_pattern, version_str, re.M).group(1)
 
+# Get the long description
+readme_file = os.path.join(os.path.dirname(__file__), "README.md")
+with open(readme_file) as f:
+    long_description = f.read()
 
 setup(
     name="torchgel",
     version=version,
     description="PyTorch implementation of group elastic net",
+    long_description=long_description,
     url="https://github.com/jayanthkoushik/torch-gel",
     author="Jayanth Koushik",
     author_email="jnkoushik@gmail.com",
