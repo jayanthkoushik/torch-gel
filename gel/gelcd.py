@@ -41,14 +41,14 @@ def _f_j(q_j, b_j_norm, a_1_j, a_2_j, m):
 
         (1/2m)||q_j||^2 + a_1||b_j|| + (a_2/2)||b_j||^2
     """
-    return (q_j @ q_j) / (2. * m) + a_1_j * b_j_norm + (a_2_j / 2.) * (
-        b_j_norm ** 2
+    return ((q_j @ q_j) / (2. * m)) + (a_1_j * b_j_norm) + (
+        (a_2_j / 2.) * (b_j_norm ** 2)
     )
 
 
 def _grad_j(q_j, A_j, b_j, b_j_norm, a_1_j, a_2_j, m):
     """Compute the gradient with respect to one of the coefficients."""
-    return A_j.t() @ q_j / (-m) + b_j * (a_1_j / b_j_norm + a_2_j)
+    return (A_j.t() @ q_j / (-m)) + (b_j * (a_1_j / b_j_norm + a_2_j))
 
 
 def _hess_j(C_j, I_j, b_j, b_j_norm, a_1_j, a_2_j):
@@ -220,10 +220,11 @@ def block_solve_newton(
     return b_j
 
 
-def make_A(As, ns, use_gpu=False):
-    """Returns As as A, and optionally, moves it to GPU."""
-    if use_gpu:
-        As = [A_j.cuda() for A_j in As]
+def make_A(As, ns, device=None):
+    """Moves the As to the provided device (or cpu), and returns as A."""
+    if device is None:
+        device = torch.device("cpu")
+    As = [A_j.to(device) for A_j in As]
     return As
 
 

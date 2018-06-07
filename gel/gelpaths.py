@@ -82,7 +82,7 @@ def ridge_paths(X, y, support, lambdas, summ_fun, verbose=False):
 def _find_support(B, ns, supp_thresh):
     """Find features with non-zero coefficients."""
     try:
-        support = (B.norm(p=2, dim=1) >= supp_thresh).expand_as(B)
+        support = (B.norm(p=2, dim=1, keepdim=True) >= supp_thresh).expand_as(B)
         support = torch.cat([s_j[:n_j] for s_j, n_j in zip(support, ns)])
         return torch.nonzero(support)[:, 0]
     except IndexError:
@@ -100,7 +100,7 @@ def gel_paths(
     l_rs,
     summ_fun,
     supp_thresh=1e-6,
-    use_gpu=False,
+    device=None,
     verbose=False,
     aux_rel_tol=1e-3,
 ):
@@ -121,7 +121,7 @@ def gel_paths(
         summ_fun: function to summarize results (same as in ridge_paths).
         supp_thresh: for computing support, 2-norms below this value are
             considered 0.
-        use_gpu: whether or not to use GPU.
+        device: torch device (default cpu)
         verbose: enable/disable verbosity.
         aux_rel_tol: relative tolerance for solving auxiliary problems.
 
@@ -135,35 +135,32 @@ def gel_paths(
     # solution for (l_1^{j-1}, l_2). So, l_2s should be the outer most loop.
 
     # First compute various required variables
+    if device is None:
+        device = torch.device("cpu")
     l_1s = sorted(l_1s, reverse=True)
     p = len(As)
     m = As[0].size()[0]
-    ns = torch.tensor([A_j.size()[1] for A_j in As])
-    B_zeros = torch.zeros(p, ns.max())
+    ns = torch.tensor([A_j.size()[1] for A_j in As], device=device)
+    B_zeros = torch.zeros(p, ns.max(), device=device)
     sns = ns.float().sqrt().unsqueeze(1).expand_as(B_zeros)
 
     # Form the A matrix as needed by gel_solve
-    A = make_A(As, ns, use_gpu)
+    A = make_A(As, ns, device)
 
     # Form X which combines all the As
     X = torch.cat(As, dim=1)
     X = X.t()  # ridge_paths expects a pxm matrix
 
-    y_cpu = y
-    if use_gpu:
-        # Move tensors to GPU
-        B_zeros = B_zeros.cuda()
-        ns = ns.cuda()
-        sns = sns.cuda()
-        y = y.cuda()
-        if "Cs" in gel_solve_kwargs:
-            gel_solve_kwargs["Cs"] = [
-                C_j.cuda() for C_j in gel_solve_kwargs["Cs"]
-            ]
-        if "Is" in gel_solve_kwargs:
-            gel_solve_kwargs["Is"] = [
-                I_j.cuda() for I_j in gel_solve_kwargs["Is"]
-            ]
+    y_cp = y.to(X.device)  # Required for compute_ls_grid
+    y = y.to(device)
+    if "Cs" in gel_solve_kwargs:
+        gel_solve_kwargs["Cs"] = [
+            C_j.to(device) for C_j in gel_solve_kwargs["Cs"]
+        ]
+    if "Is" in gel_solve_kwargs:
+        gel_solve_kwargs["Is"] = [
+            I_j.to(device) for I_j in gel_solve_kwargs["Is"]
+        ]
 
     gel_solve_kwargs_aux = gel_solve_kwargs.copy()
     gel_solve_kwargs_aux["rel_tol"] = aux_rel_tol
@@ -177,7 +174,7 @@ def gel_paths(
             k = 1. / (1. + l_2 / l_1s[0])
 
             # Compute l_max corresponding to k
-            l_aux = compute_ls_grid(As, y_cpu, sns[:, 0], m, [k], 1, None)[k][0]
+            l_aux = compute_ls_grid(As, y_cp, sns[:, 0], m, [k], 1, None)[k][0]
 
             # Solve with k, l_aux
             if verbose:
@@ -213,9 +210,7 @@ def gel_paths(
 
             # Solve ridge on support and store summaries
             if support is not None:
-                X_supp = X[support.cpu()]
-                if use_gpu:
-                    X_supp = X_supp.cuda()
+                X_supp = X[support.to(X.device)].to(device)
             else:
                 X_supp = None
             ridge_summaries = ridge_paths(
@@ -242,7 +237,7 @@ def gel_paths2(
     l_rs,
     summ_fun,
     supp_thresh=1e-6,
-    use_gpu=False,
+    device=None,
     verbose=False,
     ls_grid=None,
     aux_rel_tol=1e-3,
@@ -267,37 +262,34 @@ def gel_paths2(
     aux_rel_tol is the relative tolerance for solving auxiliary problems.
     """
     # Setup is mostly identical to gel_paths
+    if device is None:
+        device = torch.device("cpu")
     p = len(As)
     m = As[0].size()[0]
-    ns = torch.LongTensor([A_j.size()[1] for A_j in As])
-    B_zeros = torch.zeros(p, ns.max())
+    ns = torch.LongTensor([A_j.size()[1] for A_j in As], device=device)
+    B_zeros = torch.zeros(p, ns.max(), device=device)
     sns = ns.float().sqrt().unsqueeze(1).expand_as(B_zeros)
-    A = make_A(As, ns, use_gpu)
+    A = make_A(As, ns, device)
     X = torch.cat(As, dim=1)
     X = X.t()
 
-    y_cpu = y
-    if use_gpu:
-        # Move tensors to GPU
-        B_zeros = B_zeros.cuda()
-        ns = ns.cuda()
-        sns = sns.cuda()
-        y = y.cuda()
-        if "Cs" in gel_solve_kwargs:
-            gel_solve_kwargs["Cs"] = [
-                C_j.cuda() for C_j in gel_solve_kwargs["Cs"]
-            ]
-        if "Is" in gel_solve_kwargs:
-            gel_solve_kwargs["Is"] = [
-                I_j.cuda() for I_j in gel_solve_kwargs["Is"]
-            ]
+    y_cp = y.to(X.device)
+    y = y.to(device)
+    if "Cs" in gel_solve_kwargs:
+        gel_solve_kwargs["Cs"] = [
+            C_j.to(device) for C_j in gel_solve_kwargs["Cs"]
+        ]
+    if "Is" in gel_solve_kwargs:
+        gel_solve_kwargs["Is"] = [
+            I_j.to(device) for I_j in gel_solve_kwargs["Is"]
+        ]
 
     if ls_grid is None:
-        ls_grid = compute_ls_grid(As, y_cpu, sns[:, 0], m, ks, n_ls, l_eps)
+        ls_grid = compute_ls_grid(As, y_cp, sns[:, 0], m, ks, n_ls, l_eps)
         ls_grid_self = None
     else:
         # Compute l values with self data to get good initializations
-        ls_grid_self = compute_ls_grid(As, y_cpu, sns[:, 0], m, ks, n_ls, l_eps)
+        ls_grid_self = compute_ls_grid(As, y_cp, sns[:, 0], m, ks, n_ls, l_eps)
         gel_solve_kwargs_aux = gel_solve_kwargs.copy()
         gel_solve_kwargs_aux["rel_tol"] = aux_rel_tol
 
@@ -359,9 +351,7 @@ def gel_paths2(
 
             # Solve ridge on support and store summaries
             if support is not None:
-                X_supp = X[support.cpu()]
-                if use_gpu:
-                    X_supp = X_supp.cuda()
+                X_supp = X[support.to(X.device)].to(device)
             else:
                 X_supp = None
             ridge_summaries = ridge_paths(

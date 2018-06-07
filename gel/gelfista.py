@@ -89,22 +89,23 @@ def _grad(A, b_0, B, y, p, m):
     return grad_b_0, grad_B
 
 
-def make_A(As, ns, use_gpu=False):
+def make_A(As, ns, device=None):
     """Create the 3D tensor A as needed by gel_solve, given a list of feature
         matrices.
 
     Arguments:
         As: list of feature matrices, one per group (size mxn_j).
         ns: LongTensor of group sizes.
-        use_gpu: move the final tensor to GPU.
+        device: torch device (default cpu)
     """
     A = torch.zeros(len(ns), ns.max(), As[0].size()[0])
     for j, n_j in enumerate(ns):
         # Fill A[j] with A_j.T
         A_j = As[j]
         A[j, :n_j, :] = A_j.t()
-    if use_gpu:
-        A = A.cuda()
+    if device is None:
+        device = torch.device("cpu")
+    A = A.to(device)
     return A
 
 
