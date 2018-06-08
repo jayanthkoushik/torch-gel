@@ -7,7 +7,7 @@
 [![Code style: black][black-badge]][black]
 
 [travis-badge]: https://img.shields.io/travis/jayanthkoushik/torch-gel.svg?style=for-the-badge
-[travis]: https://travis-ci.com/jayanthkoushik/torch-gel
+[travis]: https://travis-ci.org/jayanthkoushik/torch-gel
 [pypi-badge]: https://img.shields.io/pypi/v/torchgel.svg?style=for-the-badge
 [pypi-version-badge]: https://img.shields.io/pypi/pyversions/torchgel.svg?style=for-the-badge
 [pypi]: https://pypi.org/project/torchgel/
