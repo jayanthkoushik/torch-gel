@@ -12,7 +12,7 @@
 [pypi-version-badge]: https://img.shields.io/pypi/pyversions/torchgel.svg?style=for-the-badge
 [pypi]: https://pypi.org/project/torchgel/
 [license-badge]: https://img.shields.io/github/license/jayanthkoushik/torch-gel.svg?style=for-the-badge
-[license]: https://github.com/jayanthkoushik/torch-gel/blob/master/LICENSE.txt
+[license]: https://github.com/jayanthkoushik/torch-gel/blob/master/LICENSE
 [black-badge]: https://img.shields.io/badge/code%20style-black-000000.svg?style=for-the-badge
 [black]: https://github.com/ambv/black
 
