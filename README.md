@@ -17,9 +17,9 @@
 [black]: https://github.com/ambv/black
 
 This package provides PyTorch implementations to solve the group elastic net
-problem. Let _A<sub>j</sub>_ (_j = 1 … p_) be feature matrices of sizes _m ⨉
+problem. Let _A<sub>j</sub>_ (_j = 1 … p_) be feature matrices of sizes _m ×
 n<sub>j</sub>_ (_m_ is the number of samples, and _n<sub>j</sub>_ is the number
-of features in the _j_<sup>th</sup> group), and let _y_ be an _m ⨉ 1_ vector of
+of features in the _j_<sup>th</sup> group), and let _y_ be an _m × 1_ vector of
 the responses. Group elastic net finds coefficients _β<sub>j</sub>_, and a bias
 _β<sub>0</sub>_ that solve the optimization problem
 
@@ -74,7 +74,7 @@ b_0, B = gel_solve(A, y, l_1, l_2, ns, **kwargs)
 
 `l_1` and `l_2` are floats representing _λ<sub>1</sub>_ and _λ<sub>2</sub>_
 respectively. The method returns a float `b_0` representing the bias and a
-PyTorch matrix `B` holding the other coefficients. `B` has size _p ⨉_
+PyTorch matrix `B` holding the other coefficients. `B` has size _p ×_
 max<sub>_j_</sub> _n<sub>j</sub>_ with suitable zero padding. The following
 sections cover additional details for the specific implementations.
 
