@@ -12,6 +12,7 @@ matrix:
 
     - os: linux
       dist: xenial
+      sudo: true
       python: 3.7
       env: TORCH_WHL=http://download.pytorch.org/whl/cpu/torch-0.4.1-cp37-cp37m-linux_x86_64.whl
 
