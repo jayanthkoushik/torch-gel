@@ -15,6 +15,9 @@ matrix:
       sudo: true
       python: 3.7
       env: TORCH_WHL=http://download.pytorch.org/whl/cpu/torch-0.4.1-cp37-cp37m-linux_x86_64.whl
+      before_install:
+        - sudo apt-get update -y
+        - sudo apt-get install -y libblas-dev liblapack-dev
 
 install:
   - pip install $TORCH_WHL
