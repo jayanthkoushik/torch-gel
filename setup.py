@@ -1,9 +1,9 @@
 """setup.py: setup script for the project."""
 
-import re
 import os
-from setuptools import setup, find_packages
+import re
 
+from setuptools import find_packages, setup
 
 # Get the version number
 version_file = os.path.join(os.path.dirname(__file__), "gel", "_version.py")
@@ -36,6 +36,7 @@ setup(
         "Programming Language :: Python :: 3 :: Only",
         "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
         "Topic :: Scientific/Engineering :: Mathematics",
     ],
     keywords="pytorch lasso elasticnet",
