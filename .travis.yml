@@ -32,7 +32,6 @@ matrix:
     #     - tar xf SuiteSparse-5.3.0.tar.gz -C /home/travis
 
     - os: osx
-      sudo: required
       language: generic
       python: "3.5"
       env: TORCH=torch==0.4.0
@@ -50,10 +49,10 @@ matrix:
     #   env: TORCH=torch==0.4.1
 
 install:
-  - pip install $TORCH
-  - pip install "tqdm>=4.0"
-  - pip install "cvxpy>=0.4,<1.0"
-  - pip install cvxopt
+  - pip install --user $TORCH
+  - pip install --user "tqdm>=4.0"
+  - pip install --user "cvxpy>=0.4,<1.0"
+  - pip install --user cvxopt
 
 script:
   - python -m unittest
