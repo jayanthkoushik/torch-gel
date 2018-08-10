@@ -48,7 +48,7 @@ matrix:
       env: TORCH=torch==0.4.1
 
 install:
-  - pip install $TORCH_WHL
+  - pip install $TORCH
   - pip install "tqdm>=4.0"
   - pip install "cvxpy>=0.4,<1.0"
   - pip install cvxopt
