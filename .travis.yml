@@ -37,14 +37,17 @@ matrix:
       env: TORCH=torch==0.4.0
 
     - os: osx
+      language: generic
       python: "3.5"
       env: TORCH=torch==0.4.1
 
     - os: osx
+      language: generic
       python: "3.6"
       env: TORCH=torch==0.4.0
 
     - os: osx
+      language: generic
       python: "3.6"
       env: TORCH=torch==0.4.1
 
