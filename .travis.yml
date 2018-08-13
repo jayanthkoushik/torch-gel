@@ -1,90 +1,42 @@
-matrix:
-  include:
-    # - os: linux
-    #   language: python
-    #   python: "3.5"
-    #   env: TORCH=http://download.pytorch.org/whl/cpu/torch-0.4.0-cp35-cp35m-linux_x86_64.whl
+os:
+  - linux
+  - osx
 
-    # - os: linux
-    #   language: python
-    #   python: "3.5"
-    #   env: TORCH=http://download.pytorch.org/whl/cpu/torch-0.4.1-cp35-cp35m-linux_x86_64.whl
+language: generic
 
-    # - os: linux
-    #   language: python
-    #   python: "3.6"
-    #   env: TORCH=http://download.pytorch.org/whl/cpu/torch-0.4.0-cp36-cp36m-linux_x86_64.whl
-
-    # - os: linux
-    #   language: python
-    #   python: "3.6"
-    #   env: TORCH=http://download.pytorch.org/whl/cpu/torch-0.4.1-cp36-cp36m-linux_x86_64.whl
-
-    # - os: linux
-    #   dist: xenial
-    #   sudo: required
-    #   language: python
-    #   python: "3.7"
-    #   env:
-    #     - TORCH=http://download.pytorch.org/whl/cpu/torch-0.4.1.post2-cp37-cp37m-linux_x86_64.whl
-    #     - CVXOPT_SUITESPARSE_SRC_DIR=/home/travis/SuiteSparse
-    #   before_install:
-    #     - sudo apt-get update
-    #     - sudo apt-get install libblas-dev liblapack-dev
-    #     - wget http://faculty.cse.tamu.edu/davis/SuiteSparse/SuiteSparse-5.3.0.tar.gz
-    #     - tar xf SuiteSparse-5.3.0.tar.gz -C /home/travis
-
-    - os: osx
-      language: generic
-      env:
-        - TORCH=torch==0.4.0
-        - PYTHON_VERSION=3.5
-
-    - os: osx
-      language: generic
-      env:
-        - TORCH=torch==0.4.1
-        - PYTHON_VERSION=3.5
-
-    - os: osx
-      language: generic
-      env:
-        - TORCH=torch==0.4.0
-        - PYTHON_VERSION=3.6
-
-    - os: osx
-      language: generic
-      env:
-        - TORCH=torch==0.4.1
-        - PYTHON_VERSION=3.6
-
-    - os: osx
-      language: generic
-      env:
-        - TORCH=torch==0.4.1
-        - PYTHON_VERSION=3.7
+env:
+  - PYTHON_VERSION=3.5 TORCH_VERSION=0.4.0
+  - PYTHON_VERSION=3.5 TORCH_VERSION=0.4.1
+  - PYTHON_VERSION=3.6 TORCH_VERSION=0.4.0
+  - PYTHON_VERSION=3.6 TORCH_VERSION=0.4.1
+  - PYTHON_VERSION=3.7 TORCH_VERSION=0.4.1
 
 before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-      wget https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O miniconda.sh;
-      bash miniconda.sh -b -p $HOME/miniconda;
-      export PATH="$HOME/miniconda/bin:$PATH";
-      conda config --set always_yes yes --set changeps1 no;
-      conda update -q conda;
-      conda info -a;
-      conda install python=$PYTHON_VERSION;
-      export MPLBACKEND=Agg;
+      CONDA_DOWNLOAD="https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh";
+      TORCH="pytorch";
+      TORCHVISION="torchvision";
+    else
+      CONDA_DOWNLOAD="https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh";
+      TORCH="pytorch-cpu";
+      TORCHVISION="torchvision-cpu";
     fi
-
-install:
+  - wget $CONDA_DOWNLOAD -O miniconda.sh
+  - bash miniconda.sh -b -p $HOME/miniconda
+  - export PATH="$HOME/miniconda/bin:$PATH"
+  - conda config --set always_yes yes --set changeps1 no
+  - conda update -q conda
+  - conda info -a
+  - conda install python=$PYTHON_VERSION
+  - conda install -c conda-forge suitesparse
+  - export MPLBACKEND=Agg
   - which python
   - which pip
   - python --version
-  - pip install numpy
-  - pip install $TORCH
-  - pip install "tqdm>=4.0"
-  - pip install "cvxpy>=0.4,<1.0"
-  - pip install cvxopt
+
+install:
+  - conda install -c pytorch $TORCH=$TORCH_VERSION $TORCHVISION
+  - pip install -e ".[test]"
 
 script:
   - python -m unittest
