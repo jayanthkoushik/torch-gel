@@ -80,6 +80,7 @@ install:
   - which python
   - which pip
   - python --version
+  - pip install numpy
   - pip install $TORCH
   - pip install "tqdm>=4.0"
   - pip install "cvxpy>=0.4,<1.0"
