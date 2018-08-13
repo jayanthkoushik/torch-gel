@@ -29,8 +29,8 @@ before_install:
   - conda install cython
   - conda install numpy
   - conda install swig
-  - pip install scikit-umfpack
   - conda install -c conda-forge suitesparse
+  - pip install scikit-umfpack
   - export MPLBACKEND=Agg
   - which python
   - which pip
