@@ -28,6 +28,7 @@ before_install:
   - conda install python=$PYTHON_VERSION
   - conda install cython
   - conda install -c conda-forge suitesparse
+  - pip install scikit-umfpack
   - export MPLBACKEND=Agg
   - which python
   - which pip
