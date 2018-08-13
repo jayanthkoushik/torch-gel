@@ -15,11 +15,9 @@ before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
       CONDA_DOWNLOAD="https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh";
       TORCH="pytorch";
-      TORCHVISION="torchvision";
     else
       CONDA_DOWNLOAD="https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh";
       TORCH="pytorch-cpu";
-      TORCHVISION="torchvision-cpu";
     fi
   - wget $CONDA_DOWNLOAD -O miniconda.sh
   - bash miniconda.sh -b -p $HOME/miniconda
@@ -35,7 +33,8 @@ before_install:
   - python --version
 
 install:
-  - conda install -c pytorch $TORCH=$TORCH_VERSION $TORCHVISION
+  - conda install -c pytorch $TORCH=$TORCH_VERSION
+  - pip install torchvision
   - pip install -e ".[test]"
 
 script:
