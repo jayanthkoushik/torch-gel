@@ -1,4 +1,4 @@
-image: Visual Studio 2013
+image: Visual Studio 2017
 platform: x64
 build: off
 
@@ -35,6 +35,7 @@ init:
 install:
   - "conda install -c pytorch pytorch-cpu=%TORCH_VERSION%"
   - pip install torchvision
+  - pip install ecos==2.0.7rc1
   - pip install -e ".[test]"
 
 test_script:
