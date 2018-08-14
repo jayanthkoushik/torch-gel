@@ -5,6 +5,7 @@ build: off
 environment:
   global:
     CONDA: C:\Miniconda35
+    MPLBACKEND: Agg
 
   matrix:
     - PYTHON_VERSION: "3.5"
@@ -27,12 +28,12 @@ init:
   - "set PATH=%CONDA%;%CONDA%\\Scripts;%PATH%"
   - conda config --set always_yes yes --set changeps1 no
   - conda info -a
+  - "conda install python=%PYTHON_VERSION%"
   - conda install cython
   - conda install -c conda-forge suitesparse
-  - export MPLBACKEND=Agg
 
 install:
-  - conda install -c pytorch pytorch-cpu
+  - "conda install -c pytorch pytorch-cpu=%TORCH_VERSION%"
   - pip install torchvision
   - pip install -e ".[test]"
 
