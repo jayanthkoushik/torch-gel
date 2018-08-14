@@ -1,6 +1,7 @@
 # torch-gel
 
 [![Travis][travis-badge]][travis]
+[![Appveyor][appveyor-badge]][appveyor]
 [![PyPI][pypi-badge]][pypi]
 [![PyPi - Python Version][pypi-version-badge]][pypi]
 [![GitHub license][license-badge]][license]
@@ -15,6 +16,8 @@
 [license]: https://github.com/jayanthkoushik/torch-gel/blob/master/LICENSE
 [black-badge]: https://img.shields.io/badge/code%20style-black-000000.svg?style=for-the-badge
 [black]: https://github.com/ambv/black
+[appveyor-badge]: https://img.shields.io/appveyor/ci/jayanthkoushik/torch-gel.svg?style=for-the-badge
+[appveyor]: https://ci.appveyor.com/project/jayanthkoushik/torch-gel
 
 This package provides PyTorch implementations to solve the group elastic net
 problem. Let _A<sub>j</sub>_ (_j = 1 … p_) be feature matrices of sizes _m ×

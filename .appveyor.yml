@@ -1,4 +1,4 @@
-image: Visual Studio 2017
+image: Visual Studio 2013
 platform: x64
 build: off
 
@@ -33,9 +33,9 @@ init:
   - conda install -c conda-forge suitesparse
 
 install:
+  - pip install -e ".[test]"
   - "conda install -c pytorch pytorch-cpu=%TORCH_VERSION%"
   - pip install torchvision
-  - pip install -e ".[test]"
 
 test_script:
   - python -m unittest
