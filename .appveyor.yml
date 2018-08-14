@@ -11,17 +11,17 @@ environment:
     - PYTHON_VERSION: "3.5"
       TORCH_VERSION: "0.4.0"
 
-    # - PYTHON_VERSION: "3.5"
-    #   TORCH_VERSION: "0.4.1"
+    - PYTHON_VERSION: "3.5"
+      TORCH_VERSION: "0.4.1"
 
-    # - PYTHON_VERSION: "3.6"
-    #   TORCH_VERSION: "0.4.0"
+    - PYTHON_VERSION: "3.6"
+      TORCH_VERSION: "0.4.0"
 
-    # - PYTHON_VERSION: "3.6"
-    #   TORCH_VERSION: "0.4.1"
+    - PYTHON_VERSION: "3.6"
+      TORCH_VERSION: "0.4.1"
 
-    # - PYTHON_VERSION: "3.7"
-    #   TORCH_VERSION: "0.4.1"
+    - PYTHON_VERSION: "3.7"
+      TORCH_VERSION: "0.4.1"
 
 init:
   - "ECHO %PYTHON_VERSION% %TORCH_VERSION%"
@@ -31,6 +31,7 @@ init:
   - "conda install python=%PYTHON_VERSION%"
   - conda install cython
   - conda install -c conda-forge suitesparse
+  - python --version
 
 install:
   - "conda install -c pytorch pytorch-cpu=%TORCH_VERSION%"
