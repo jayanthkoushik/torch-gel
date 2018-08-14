@@ -1,0 +1,14 @@
+image: Visual Studio 2015
+
+init:
+  - conda install cython
+  - conda install -c conda-forge suitesparse
+  - export MPLBACKEND=Agg
+
+install:
+  - conda install -c pytorch-cpu
+  - pip install torchvision
+  - pip install -e ".[test]"
+
+test_script:
+  - python -m unittest
