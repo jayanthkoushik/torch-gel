@@ -43,5 +43,8 @@ setup(
     packages=find_packages(exclude=["tests"]),
     install_requires=["tqdm>=4.0"],
     python_requires=">=3.5",
-    extras_require={"test": ["cvxpy>=0.4,<1.0", "cvxopt"]},
+    extras_require={
+        "test": ["numpy", "cvxpy>=0.4,<1.0", "cvxopt"],
+        "dev": ["black", "pylint", "isort", "twine"],
+    },
 )
