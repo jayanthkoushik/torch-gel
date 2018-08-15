@@ -38,6 +38,7 @@ install:
   - "conda install -c pytorch pytorch-cpu=%TORCH_VERSION%"
   - pip install torchvision
   - pip install ecos==2.0.7rc1
+  - conda install cvxopt
   - pip install -e ".[test]"
 
 test_script:
