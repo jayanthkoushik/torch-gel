@@ -4,21 +4,21 @@ build: off
 
 environment:
   global:
-    CONDA: C:\Miniconda35-x64
+    CONDA: C:\Miniconda36-x64
     MPLBACKEND: Agg
 
   matrix:
-    - PYTHON_VERSION: "3.5"
-      TORCH_VERSION: "0.4.0"
+    # - PYTHON_VERSION: "3.5"
+    #   TORCH_VERSION: "0.4.0"
 
-    - PYTHON_VERSION: "3.5"
-      TORCH_VERSION: "0.4.1"
+    # - PYTHON_VERSION: "3.5"
+    #   TORCH_VERSION: "0.4.1"
 
-    - PYTHON_VERSION: "3.6"
-      TORCH_VERSION: "0.4.0"
+    # - PYTHON_VERSION: "3.6"
+    #   TORCH_VERSION: "0.4.0"
 
-    - PYTHON_VERSION: "3.6"
-      TORCH_VERSION: "0.4.1"
+    # - PYTHON_VERSION: "3.6"
+    #   TORCH_VERSION: "0.4.1"
 
     - PYTHON_VERSION: "3.7"
       TORCH_VERSION: "0.4.1"
