@@ -45,6 +45,6 @@ setup(
     python_requires=">=3.5",
     extras_require={
         "test": ["numpy", "cvxpy>=0.4,<1.0", "cvxopt"],
-        "dev": ["black", "pylint", "isort", "twine"],
+        "dev": ["black", "pylint", "isort", "twine", "wheel"],
     },
 )
