@@ -112,9 +112,9 @@ def block_solve_agd(
             f_b_j = _f_j(q_b_j, b_j_norm, a_1_j, a_2_j, m)
             b_v_diff = b_j - v_j
             c2 = grad_v_j @ b_v_diff
-            c3 = b_v_diff @ b_v_diff / (2. * t)
+            c3 = b_v_diff @ b_v_diff / 2.
 
-            if f_b_j <= f_v_j + c2 + c3:
+            if t * f_b_j <= t * (f_v_j + c2) + c3:
                 break
             else:
                 t *= ls_beta
