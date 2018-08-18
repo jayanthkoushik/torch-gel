@@ -1,11 +1,11 @@
 """gelpaths.py: solution paths for group elastic net.
 
-This module implements a 2-stage process where group elastic net
-is used to find the support, and ridge regression is performed on it.
+This module implements a 2-stage process where group elastic net is used to find
+the support, and ridge regression is performed on it.
 """
 
-import sys
 import math
+import sys
 
 import torch
 import tqdm
@@ -15,9 +15,9 @@ def ridge_paths(X, y, support, lambdas, summ_fun, verbose=False):
     """Solve ridge ridgression for a sequence of regularization values,
     and return the summary for each.
 
-    The multiple solutions are obtained efficiently using the Woodbury
-    identity. With X (p x m) representing the feature matrix, and y (m x 1)
-    the outcomes, the ridge solution is given by
+    The multiple solutions are obtained efficiently using the Woodbury identity.
+    With X (p x m) representing the feature matrix, and y (m x 1) the outcomes,
+    the ridge solution is given by
 
         b = (X@X.T + l*I)^{-1}@X@y
 
@@ -25,23 +25,22 @@ def ridge_paths(X, y, support, lambdas, summ_fun, verbose=False):
 
         (1/l)*(X@y - X@V(e + l*I)^{-1}@(X@V).T@X@y)
 
-    where V@e@V.T is the eigendecomposition of X.T@X. Since (e + l*I) is
-    a diagonal matrix, its inverse can be performed efficiently simply by
-    taking the reciprocal of the diagonal elements. Then, (X@V).T@X@y
-    is a vector; so it can be multiplied by (e + l*I)^{-1} just by scalar
-    multiplication.
+    where V@e@V.T is the eigendecomposition of X.T@X. Since (e + l*I) is a
+    diagonal matrix, its inverse can be performed efficiently simply by taking
+    the reciprocal of the diagonal elements. Then, (X@V).T@X@y is a vector; so
+    it can be multiplied by (e + l*I)^{-1} just by scalar multiplication.
 
     Arguments:
         X: pxm FloatTensor of features (where m is the number of samples);
             X should be centered (each row should have mean 0).
         y: FloatTensor (length m vector) of outcomes.
-        support: LongTensor vector of features to use. This vector
-            should contain indices. It can also be None to indicate empty
-            support. X should already be indexed using support.
-            This argument is simply passed to the summary function.
+        support: LongTensor vector of features to use. This vector should
+            contain indices. It can also be None to indicate empty support.
+            X should already be indexed using support. This argument is simply
+            passed to the summary function.
         lambdas: list of regularization values for which to solve the problem.
-        summ_fun: a function that takes (support, b) and returns an
-            arbitrary summary.
+        summ_fun: a function that takes (support, b) and returns an arbitrary
+            summary.
         verbose: enable/disable the progress bar.
 
     The function returns a dictionary mapping lambda values to their summaries.
@@ -49,7 +48,7 @@ def ridge_paths(X, y, support, lambdas, summ_fun, verbose=False):
     summaries = {}
 
     if support is None:
-        # Nothing to do
+        # Nothing to do.
         for l in tqdm.tqdm(
             lambdas,
             desc="Solving ridge regressions",
@@ -60,13 +59,13 @@ def ridge_paths(X, y, support, lambdas, summ_fun, verbose=False):
         return summaries
 
     else:
-        # Setup
+        # Setup.
         e, V = torch.symeig(X.t() @ X, eigenvectors=True)
         p = X @ y  # X@y
         Q = X @ V  # X@V
         r = Q.t() @ p  # (X@V).T@X@y
 
-        # Main loop
+        # Main loop.
         for l in tqdm.tqdm(
             lambdas,
             desc="Solving ridge regressions",
@@ -115,8 +114,8 @@ def gel_paths(
             internally.
         gel_solve_kwargs: dictionary of keyword arguments to be passed to
             gel_solve.
-        As: list of feature matrices (same as in make_A). All features should
-            be centered.
+        As: list of feature matrices (same as in make_A). All features should be
+            centered.
         l_1s, l_2s, l_rs: list of values for l_1, l_2, and l_r respectively.
         summ_fun: function to summarize results (same as in ridge_paths).
         supp_thresh: for computing support, 2-norms below this value are
@@ -129,12 +128,12 @@ def gel_paths(
     summaries.
     """
     # We have to loop over l_1s, l_2s, and l_rs. Since multiple ridge
-    # regressions can be performed efficiently with ridge_paths, l_rs should
-    # be the inner most loop. Further, with l_1^1 > l_1^2 > ..., group elastic
-    # net for (l_1^j, l_2) can be solved efficiently by warm starting at the
+    # regressions can be performed efficiently with ridge_paths, l_rs should be
+    # the inner most loop. Further, with l_1^1 > l_1^2 > ..., group elastic net
+    # for (l_1^j, l_2) can be solved efficiently by warm starting at the
     # solution for (l_1^{j-1}, l_2). So, l_2s should be the outer most loop.
 
-    # First compute various required variables
+    # First compute various required variables.
     if device is None:
         device = torch.device("cpu")
     l_1s = sorted(l_1s, reverse=True)
@@ -144,14 +143,14 @@ def gel_paths(
     B_zeros = torch.zeros(p, ns.max(), device=device)
     sns = ns.float().sqrt().unsqueeze(1).expand_as(B_zeros)
 
-    # Form the A matrix as needed by gel_solve
+    # Form the A matrix as needed by gel_solve.
     A = make_A(As, ns, device)
 
-    # Form X which combines all the As
+    # Form X which combines all the As.
     X = torch.cat(As, dim=1)
     X = X.t()  # ridge_paths expects a pxm matrix
 
-    y_cp = y.to(X.device)  # Required for compute_ls_grid
+    y_cp = y.to(X.device)  # required for compute_ls_grid
     y = y.to(device)
     if "Cs" in gel_solve_kwargs:
         gel_solve_kwargs["Cs"] = [
@@ -167,16 +166,16 @@ def gel_paths(
     summaries = {}
 
     for l_2 in l_2s:
-        # Find a good initialization to solve for the first (l_1, l_2) pair
+        # Find a good initialization to solve for the first (l_1, l_2) pair.
         if l_1s[0] != 0:
-            # Find k corresponding to the l_1, l_2
-            # l_1 = k*l, and l_2 = (1 - k)*l
+            # Find k corresponding to the l_1, l_2.
+            # l_1 = k*l, and l_2 = (1 - k)*l.
             k = 1. / (1. + l_2 / l_1s[0])
 
-            # Compute l_max corresponding to k
+            # Compute l_max corresponding to k.
             l_aux = compute_ls_grid(As, y_cp, sns[:, 0], m, [k], 1, None)[k][0]
 
-            # Solve with k, l_aux
+            # Solve with k, l_aux.
             if verbose:
                 print(
                     "Solving auxiliary problem to get good initialization",
@@ -196,19 +195,19 @@ def gel_paths(
                 print("Done solving auxiliary problem", file=sys.stderr)
 
         for l_1 in l_1s:
-            # Solve group elastic net initializing at the previous solution
+            # Solve group elastic net initializing at the previous solution.
             b_0, B = gel_solve(
                 A, y, l_1, l_2, ns, b_init, verbose=verbose, **gel_solve_kwargs
             )
             b_init = b_0, B
 
-            # Find support
+            # Find support.
             support = _find_support(B, ns, supp_thresh)
             if verbose:
                 support_size = 0 if support is None else len(support)
                 print("Support size: {}".format(support_size), file=sys.stderr)
 
-            # Solve ridge on support and store summaries
+            # Solve ridge on support and store summaries.
             if support is not None:
                 X_supp = X[support.to(X.device)].to(device)
             else:
@@ -248,20 +247,19 @@ def gel_paths2(
 
         l*(k*||b_j|| + (1 - k)*||b_j||^2)
 
-    where k controls the tradeoff between the two norms,
-    and l controls the overall strength. This function takes a list of
-    tradeoff values through ks. For each k, an upper bound can be found on l
-    (which will lead to an empty support). Using this upper bound,
-    n_ls l values are computed on a log scale such that
-    l_min / l_max = l_eps. Other arguments are same as in gel_paths.
+    where k controls the tradeoff between the two norms, and l controls the
+    overall strength. This function takes a list of tradeoff values through ks.
+    For each k, an upper bound can be found on l (which will lead to an empty
+    support). Using this upper bound, n_ls l values are computed on a log scale
+    such that l_min / l_max = l_eps. Other arguments are same as in gel_paths.
 
-    ls_grid is a pre-computed dictionary mapping each k in ks to a list of
-    l values (in decreasing order). If this argument is not None, n_ls and
-    l_eps are ignored.
+    ls_grid is a pre-computed dictionary mapping each k in ks to a list of l
+    values (in decreasing order). If this argument is not None, n_ls and l_eps
+    are ignored.
 
     aux_rel_tol is the relative tolerance for solving auxiliary problems.
     """
-    # Setup is mostly identical to gel_paths
+    # Setup is mostly identical to gel_paths.
     if device is None:
         device = torch.device("cpu")
     p = len(As)
@@ -288,20 +286,20 @@ def gel_paths2(
         ls_grid = compute_ls_grid(As, y_cp, sns[:, 0], m, ks, n_ls, l_eps)
         ls_grid_self = None
     else:
-        # Compute l values with self data to get good initializations
+        # Compute l values with self data to get good initializations.
         ls_grid_self = compute_ls_grid(As, y_cp, sns[:, 0], m, ks, n_ls, l_eps)
         gel_solve_kwargs_aux = gel_solve_kwargs.copy()
         gel_solve_kwargs_aux["rel_tol"] = aux_rel_tol
 
     summaries = {}
     for k in ks:
-        b_init = 0., B_zeros  # Reset the initial value for each k
+        b_init = 0., B_zeros  # reset the initial value for each k
         ls = ls_grid[k]
         full_support = False
 
         if ls_grid_self is not None:
-            # Solve with self l values to get a better initialization
-            # This _greatly_ speeds up the optimization
+            # Solve with self l values to get a better initialization.
+            # This _greatly_ speeds up the optimization.
             if verbose:
                 print(
                     "Solving auxiliary problems to get good initialization",
@@ -327,21 +325,21 @@ def gel_paths2(
         ridge_summaries = None
         for l in ls:
             if full_support:
-                # Just copy the previous summaries
+                # Just copy the previous summaries.
                 for l_r, summary in ridge_summaries.items():
                     summaries[(k, l, l_r)] = summary
                 continue
 
-            # Convert k, l into l_1, l_2
+            # Convert k, l into l_1, l_2.
             l_1, l_2 = k * l, (1. - k) * l
 
-            # Rest is similar to gel_paths
+            # Rest is similar to gel_paths.
             b_0, B = gel_solve(
                 A, y, l_1, l_2, ns, b_init, verbose=verbose, **gel_solve_kwargs
             )
             b_init = b_0, B
 
-            # Find support
+            # Find support.
             support = _find_support(B, ns, supp_thresh)
             support_size = 0 if support is None else len(support)
             if support_size == X.size()[0]:
@@ -349,7 +347,7 @@ def gel_paths2(
             if verbose:
                 print("Support size: {}".format(support_size), file=sys.stderr)
 
-            # Solve ridge on support and store summaries
+            # Solve ridge on support and store summaries.
             if support is not None:
                 X_supp = X[support.to(X.device)].to(device)
             else:
@@ -374,9 +372,8 @@ def compute_ls_grid(As, y, sns_vec, m, ks, n_ls, l_eps):
     sns_j values as opposed to the matrix computed in gel_paths2.
     """
     ls_grid = {}
-    # The bound is given by max{||A_j.T@(y - b_0)||/(m*sqrt{n_j}*k)}
-    # where b_0 = 1.T@y/m.
-    # So most things can be precomputed
+    # The bound is given by max{||A_j.T@(y - b_0)||/(m*sqrt{n_j}*k)} where b_0 =
+    # 1.T@y/m. So most things can be precomputed.
     l_max_b_0 = y.mean()
     l_max_unscaled = max(
         (A_j.t() @ (y - l_max_b_0)).norm(p=2) / (m * sns_j)

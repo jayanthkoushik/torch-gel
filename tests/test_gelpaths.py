@@ -2,8 +2,8 @@
 
 import unittest
 
-import torch
 import numpy as np
+import torch
 
 from gel.gelpaths import ridge_paths
 
@@ -14,7 +14,7 @@ class TestGelPaths(unittest.TestCase):
 
     def test_ridge_paths(self):
         """Test the ridge_paths function."""
-        # Setup
+        # Setup.
         X = torch.rand(20, 10)
         y = torch.rand(10)
         support = torch.tensor(range(20))
@@ -22,7 +22,7 @@ class TestGelPaths(unittest.TestCase):
         summ_fun = lambda support, b: b
 
         summaries = ridge_paths(X, y, support, lambdas, summ_fun)
-        # Compare each b with the naive solution
+        # Compare each b with the naive solution.
         I = torch.eye(X.size()[0])
         Q = X @ X.t()  # X@X.T
         r = X @ y  # X@y

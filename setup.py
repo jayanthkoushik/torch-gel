@@ -5,14 +5,14 @@ import re
 
 from setuptools import find_packages, setup
 
-# Get the version number
+# Get the version number.
 version_file = os.path.join(os.path.dirname(__file__), "gel", "_version.py")
 with open(version_file) as f:
     version_str = f.read()
 version_str_pattern = r'^__version__ = "(.*?)"$'
 version = re.search(version_str_pattern, version_str, re.M).group(1)
 
-# Get the long description
+# Get the long description.
 readme_file = os.path.join(os.path.dirname(__file__), "README.md")
 with open(readme_file) as f:
     long_description = f.read()
