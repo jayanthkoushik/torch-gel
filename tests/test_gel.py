@@ -7,8 +7,12 @@ import cvxpy as cvx
 import numpy as np
 import torch
 
-from gel.gelcd import (block_solve_agd, block_solve_newton,
-                       gel_solve as gel_solve_cd, make_A as make_A_cd)
+from gel.gelcd import (
+    block_solve_agd,
+    block_solve_newton,
+    gel_solve as gel_solve_cd,
+    make_A as make_A_cd,
+)
 from gel.gelfista import gel_solve as gel_solve_fista, make_A as make_A_fista
 
 
