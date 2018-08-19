@@ -1,16 +1,7 @@
 """setup.py: setup script for the project."""
 
 import os
-import re
-
 from setuptools import find_packages, setup
-
-# Get the version number.
-version_file = os.path.join(os.path.dirname(__file__), "gel", "_version.py")
-with open(version_file) as f:
-    version_str = f.read()
-version_str_pattern = r'^__version__ = "(.*?)"$'
-version = re.search(version_str_pattern, version_str, re.M).group(1)
 
 # Get the long description.
 readme_file = os.path.join(os.path.dirname(__file__), "README.md")
@@ -19,7 +10,7 @@ with open(readme_file) as f:
 
 setup(
     name="torchgel",
-    version=version,
+    version="0.8.2",
     description="PyTorch implementation of group elastic net",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -45,6 +36,6 @@ setup(
     python_requires=">=3.5",
     extras_require={
         "test": ["numpy", "cvxpy>=0.4,<1.0", "cvxopt"],
-        "dev": ["black", "pylint", "isort", "twine", "wheel"],
+        "dev": ["black", "pylint", "isort", "twine", "wheel", "bumpversion"],
     },
 )
