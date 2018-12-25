@@ -60,7 +60,8 @@ def ridge_paths(X, y, support, lambdas, summ_fun, verbose=False):
 
     else:
         # Setup.
-        e, V = torch.symeig(X.t() @ X, eigenvectors=True)
+        _, S, V = torch.svd(X)
+        e = S ** 2
         p = X @ y  # X@y
         Q = X @ V  # X@V
         r = Q.t() @ p  # (X@V).T@X@y
