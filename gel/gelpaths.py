@@ -117,6 +117,7 @@ def gel_paths(
             gel_solve.
         As: list of feature matrices (same as in make_A). All features should be
             centered.
+        y: vector of predictions.
         l_1s, l_2s, l_rs: list of values for l_1, l_2, and l_r respectively.
         summ_fun: function to summarize results (same as in ridge_paths).
         supp_thresh: for computing support, 2-norms below this value are
@@ -244,6 +245,28 @@ def gel_paths2(
 ):
     """Solve for paths with a reparametrized group elastic net.
 
+    Arguments:
+        gel_solve, make_A: functions from a gel implementation to be used
+            internally.
+        gel_solve_kwargs: dictionary of keyword arguments to be passed to
+            gel_solve.
+        As: list of feature matrices (same as in make_A). All features should be
+            centered.
+        y: vector of predictions.
+        ks: list of values for trading-off l1 and l2 regularizations.
+        n_ls: number of lambda values.
+        l_eps: ration of minimum to maximum lambda value.
+        l_rs: list of ridge regularization values.
+        summ_fun: function to summarize results (same as in ridge_paths).
+        supp_thresh: for computing support, 2-norms below this value are
+            considered 0.
+        device: torch device (default cpu)
+        verbose: enable/disable verbosity.
+        ls_grid: pre-computed dictionary mapping each k in ks to a list of l
+            values (in decreasing order). If this argument is not None, n_ls and
+            l_eps are ignored.
+        aux_rel_tol: relative tolerance for solving auxiliary problems.
+
     The regularization terms can be rewritten as
 
         l*(k*||b_j|| + (1 - k)*||b_j||^2)
@@ -254,11 +277,8 @@ def gel_paths2(
     support). Using this upper bound, n_ls l values are computed on a log scale
     such that l_min / l_max = l_eps. Other arguments are same as in gel_paths.
 
-    ls_grid is a pre-computed dictionary mapping each k in ks to a list of l
-    values (in decreasing order). If this argument is not None, n_ls and l_eps
-    are ignored.
-
-    aux_rel_tol is the relative tolerance for solving auxiliary problems.
+    The function returns a dictionary mapping (l_1, l_2, l_r) values to their
+    summaries.
     """
     # Setup is mostly identical to gel_paths.
     if device is None:
