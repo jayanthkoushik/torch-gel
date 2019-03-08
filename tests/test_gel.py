@@ -286,14 +286,14 @@ def create_gel_birthwt_test(device_name, dtype, *mods):
             elif mod == "nj1":
                 self.groups = [[i] for i in range(self.X.shape[1])]
             else:
-                raise RuntimeError(f"unrecognized mod: {mod}")
+                raise RuntimeError("unrecognized mod: " + mod)
 
-    _doc = f"Test gel implementations on {device_name} with {dtype}"
+    _doc = "Test gel implementations on {} with {}".format(device_name, dtype)
     if mods:
-        _doc += f" (mods: {', '.join(mods)})"
-    test_name = f"TestGelBirthwt{device_name.upper()}{str(dtype)[-2:]}"
+        _doc += " (mods: " + ", ".join(mods) + ")"
+    test_name = "TestGelBirthwt" + device_name.upper() + str(dtype)[-2:]
     if mods:
-        test_name += f"_{''.join(str(m) for m in mods)}"
+        test_name += "_" + "".join(str(m) for m in mods)
 
     globals()[test_name] = type(
         test_name,

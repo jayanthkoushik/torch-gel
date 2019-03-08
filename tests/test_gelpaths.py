@@ -217,10 +217,12 @@ def create_gelpaths_birthwt_test(device_name, dtype, two=False, grid=False):
         if grid:
             self.use_ls_grid = True
 
-    _doc = f"Test gel_paths{T} on {device_name} with {dtype}"
+    _doc = "Test gel_paths{} on {} with {}".format(T, device_name, dtype)
     if grid:
         _doc += " (with precomputed ls_grid)"
-    test_name = f"TestGelPaths{T}Birthwt{device_name.upper()}{str(dtype)[-2:]}"
+    test_name = (
+        "TestGelPaths" + T + "Birthwt" + device_name.upper() + str(dtype)[-2:]
+    )
 
     globals()[test_name] = type(
         test_name,

@@ -67,9 +67,11 @@ def create_ridgepaths_test(device_name, dtype, m, p):
     def __init__(self, *args, **kwargs):
         TestRidgePathsBase.__init__(self, device, dtype, m, p, *args, **kwargs)
 
-    _doc = f"Test ridge_paths on {device_name} with {dtype} ({m}x{p})"
-    test_name = f"TestRidgePaths{device_name.upper()}{str(dtype)[-2:]}"
-    test_name += f"_{m}x{p}"
+    _doc = "Test ridge_paths on {} with {} ({}x{})".format(
+        device_name, dtype, m, p
+    )
+    test_name = "TestRidgePaths" + device_name.upper() + str(dtype)[-2:]
+    test_name += "_{}x{}".format(m, p)
 
     globals()[test_name] = type(
         test_name,
