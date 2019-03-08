@@ -21,7 +21,6 @@ before_install:
   - bash miniconda.sh -b -p $HOME/miniconda
   - export PATH="$HOME/miniconda/bin:$PATH"
   - conda config --set always_yes yes --set changeps1 no
-  - conda info -a
 
 install:
   - conda create -n build_env python=$PYTHON_VERSION
@@ -29,6 +28,11 @@ install:
   - conda install -c pytorch $PYTORCH
   - pip install -e ".[test]"
 
-script:
+before_script:
+  - conda info -a
+  - which python
   - python --version
+  - pip freeze
+
+script:
   - python -m unittest --failfast
