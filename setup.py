@@ -10,7 +10,7 @@ with open(readme_file) as f:
 
 setup(
     name="torchgel",
-    version="0.20.0",
+    version="0.20.1",
     description="PyTorch implementation of group elastic net",
     long_description=long_description,
     long_description_content_type="text/markdown",
