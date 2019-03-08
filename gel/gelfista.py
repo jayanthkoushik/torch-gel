@@ -71,7 +71,7 @@ def _g(A, b_0, B, y, m):
     """Compute g(b)."""
     # m is the number of samples.
     r = _r(A, b_0, B, y)
-    return r @ r / (2. * m)
+    return r @ r / (2.0 * m)
 
 
 def _grad(A, b_0, B, y, p, m):
@@ -84,10 +84,12 @@ def _grad(A, b_0, B, y, p, m):
     # r must be broadcasted for the next operation.
     r = r.unsqueeze(0).unsqueeze(2).expand(p, m, 1)
     grad_B = torch.bmm(A, r).squeeze() / -m
+    if len(grad_B.shape) < len(B.shape):
+        grad_B = grad_B.unsqueeze(1)
     return grad_b_0, grad_B
 
 
-def make_A(As, ns, device=None):
+def make_A(As, ns, device=torch.device("cpu"), dtype=torch.float32):
     """Create the 3D tensor A as needed by gel_solve, given a list of feature
     matrices.
 
@@ -95,15 +97,14 @@ def make_A(As, ns, device=None):
         As: list of feature matrices, one per group (size mxn_j).
         ns: LongTensor of group sizes.
         device: torch device (default cpu).
+        dtype: torch dtype (default float32).
     """
-    A = torch.zeros(len(ns), ns.max(), As[0].size()[0])
+    A = torch.zeros(
+        len(ns), ns.max(), As[0].size()[0], device=device, dtype=dtype
+    )
     for j, n_j in enumerate(ns):
         # Fill A[j] with A_j.T.
-        A_j = As[j]
-        A[j, :n_j, :] = A_j.t()
-    if device is None:
-        device = torch.device("cpu")
-    A = A.to(device)
+        A[j, :n_j, :] = As[j].t()
     return A
 
 
@@ -123,12 +124,12 @@ def gel_solve(
     """Solve a group elastic net problem.
 
     Arguments:
-        A: 3D FloatTensor of features as described in the header, returned by
+        A: 3D tensor of features as described in the header, returned by
             make_A.
-        y: FloatTensor vector of predictions.
+        y: tensor vector of predictions.
         l_1: the 2-norm coefficient.
         l_2: the squared 2-norm coefficient.
-        ns: LongTensor of group sizes.
+        ns: iterable of group sizes.
         b_init: tuple (b_0, B) to initialize b.
         t_init: initial step size to start line search; if None, it's set to
             the value from the previous iteration.
@@ -140,14 +141,19 @@ def gel_solve(
     """
     p = len(ns)
     m = len(y)
+    device = A.device
+    dtype = A.dtype
+    y = y.to(device, dtype)
 
     # Create initial values if not specified.
     if b_init is None:
-        b_init = 0., torch.zeros(p, ns.max())
+        b_init = 0.0, torch.zeros(p, max(ns), device=device, dtype=dtype)
 
     b_0, B = b_init
     b_0_prev, B_prev = b_0, B
-    sns = ns.float().sqrt().unsqueeze(1).expand_as(B)
+    if not isinstance(ns, torch.Tensor):
+        ns = torch.tensor(ns)
+    sns = ns.to(device, dtype).sqrt().unsqueeze(1).expand_as(B)
     a_1 = l_1 * sns
     a_2 = 2 * l_2 * sns
     k = 1  # iteration number
@@ -160,7 +166,7 @@ def gel_solve(
 
     while True:
         # Compute the v terms.
-        mom = (k - 2) / (k + 1.)
+        mom = (k - 2) / (k + 1.0)
         v_0 = b_0 + mom * (b_0 - b_0_prev)
         V = B + mom * (B - B_prev)
         g_v = _g(A, v_0, V, y, m)
@@ -189,7 +195,7 @@ def gel_solve(
             # grad_v.T@(b - v):
             c_2 = grad_v_0 * b0_v0_diff + (grad_V * B_V_diff).sum()
             # (1/2t)||b - v||^2:
-            c_3 = (b0_v0_diff ** 2 + (B_V_diff ** 2).sum()) / (2. * t)
+            c_3 = (b0_v0_diff ** 2 + (B_V_diff ** 2).sum()) / (2.0 * t)
 
             if g_b <= g_v + c_2 + c_3:
                 break
@@ -214,8 +220,9 @@ def gel_solve(
 
         # Check tolerance exit criterion. Break if the relative change in 2-norm
         # between b and b_prev is less than tol.
-        if delta_norm.item() <= rel_tol * b_norm.item():
+        # k > 2 ensures that at least 2 iterations are completed.
+        if delta_norm.item() <= rel_tol * b_norm.item() and k > 2:
             break
 
     pbar.close()
-    return float(b_0), B
+    return b_0.item(), B

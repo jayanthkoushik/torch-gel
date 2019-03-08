@@ -105,7 +105,7 @@ non-zero coefficients is extracted (the support). Then ridge regression models
 are learned for each of several provided regularization values. The final model
 is summarized using an arbitrary provided summary function, and the summary for
 each combination of the regularization values is returned as a dictionary. The
-docstring contains more details. The module contains another useful function
+docstring contains more details. `gel.ridgepaths` contains another useful function,
 `ridge_paths` which can efficiently solve ridge regression for multiple
 regularization values.
 

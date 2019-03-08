@@ -1,10 +1,12 @@
 """test_gel.py: framework to test gel implementations."""
 
+import itertools
 import os
 import unittest
 
 import cvxpy as cvx
 import numpy as np
+from scipy.spatial.distance import cosine
 import torch
 
 from gel.gelcd import (
@@ -20,11 +22,17 @@ def gel_solve_cvx(As, y, l_1, l_2, ns):
     """Solve a group elastic net problem with cvx.
 
     Arguments:
-        As: list of numpy arrays.
-        y: numpy array.
+        As: list of tensors.
+        y: tensor.
         l_1, l_2: floats.
-        ns: numpy array.
+        ns: iterable.
     """
+    # Convert everything to numpy
+    dtype = As[0].dtype
+    As = [A_j.cpu().numpy() for A_j in As]
+    y = y.cpu().numpy()
+    ns = np.array([int(n) for n in ns])
+
     # Create the b variables.
     b_0 = cvx.Variable()
     bs = []
@@ -34,11 +42,11 @@ def gel_solve_cvx(As, y, l_1, l_2, ns):
     # Form g(b).
     Ab = sum(A_j * b_j for A_j, b_j in zip(As, bs))
     m = As[0].shape[0]
-    g_b = cvx.square(cvx.norm2(y - b_0 - Ab)) / (2 * m)
+    g_b = cvx.square(cvx.norm(y - b_0 - Ab)) / (2 * m)
 
     # Form h(b).
     h_b = sum(
-        np.sqrt(n_j) * (l_1 * cvx.norm2(b_j) + l_2 * cvx.square(cvx.norm2(b_j)))
+        np.sqrt(n_j) * (l_1 * cvx.norm(b_j) + l_2 * cvx.square(cvx.norm(b_j)))
         for n_j, b_j in zip(ns, bs)
     )
 
@@ -48,17 +56,13 @@ def gel_solve_cvx(As, y, l_1, l_2, ns):
 
     problem.solve(solver="CVXOPT")
 
-    b_0 = b_0.value
+    b_0 = b_0.value.item()
     # Form B as returned by gel_solve.
     p = len(As)
-    B = torch.zeros(p, int(max(ns)))
+    B = torch.zeros(p, int(max(ns)), dtype=dtype)
     for j in range(p):
         b_j = np.asarray(bs[j].value)
-        if ns[j] == 1:
-            b_j = b_j.reshape(1)
-        else:
-            b_j = b_j[:, 0]
-        B[j, : ns[j]] = torch.from_numpy(b_j.astype(np.float32))
+        B[j, : ns[j]] = torch.from_numpy(b_j)
 
     return b_0, B
 
@@ -71,18 +75,18 @@ def block_solve_cvx(r_j, A_j, a_1_j, a_2_j, m, b_j_init, verbose=False):
     verbose because it doesn't go together with tqdm.
     """
     # Convert everything to numpy.
-    r_j = r_j.numpy()
-    A_j = A_j.numpy()
+    device = A_j.device
+    dtype = A_j.dtype
+    r_j = r_j.cpu().numpy()
+    A_j = A_j.cpu().numpy()
 
     # Create the b_j variable.
     b_j = cvx.Variable(A_j.shape[1])
 
     # Form the objective.
     q_j = r_j - A_j * b_j
-    obj_fun = cvx.square(cvx.norm2(q_j)) / (2. * m)
-    obj_fun += a_1_j * cvx.norm2(b_j) + (a_2_j / 2.) * cvx.square(
-        cvx.norm2(b_j)
-    )
+    obj_fun = cvx.square(cvx.norm(q_j)) / (2.0 * m)
+    obj_fun += a_1_j * cvx.norm(b_j) + (a_2_j / 2.0) * cvx.square(cvx.norm(b_j))
 
     # Build the optimization problem.
     obj = cvx.Minimize(obj_fun)
@@ -90,34 +94,46 @@ def block_solve_cvx(r_j, A_j, a_1_j, a_2_j, m, b_j_init, verbose=False):
 
     problem.solve(solver="CVXOPT", verbose=False)
     b_j = np.asarray(b_j.value)
-    if A_j.shape[1] == 1:
-        b_j = b_j.reshape(1)
-    else:
-        b_j = b_j[:, 0]
-    return torch.from_numpy(b_j.astype(np.float32))
+    return torch.from_numpy(b_j).to(device, dtype)
 
 
 def _b2vec(B, groups):
     """Convert B as returned by gel_solve functions to a single numpy vector."""
     d = sum(len(group_j) for group_j in groups)  # the total dimension
-    b = np.zeros(d)
+    b = np.zeros(d, dtype=B[0, 0].cpu().numpy().dtype)
     for j, group_j in enumerate(groups):
-        b[group_j] = B[j, : len(group_j)].numpy()
+        b[group_j] = B[j, : len(group_j)].cpu().numpy()
     return b
 
 
-class TestGelBirthwt(unittest.TestCase):
+class TestGelBirthwtBase:
 
-    """Test different gel_solve implementations with the birth weight data."""
+    """Base class to test different gel_solve implementations with the birth
+    weight data."""
 
-    def __init__(self, *args, **kwargs):
+    l_1_base = 4.0
+    l_2_base = 0.5
+
+    def __init__(self, device, dtype, *args, **kwargs):
         """Load data and solve with cvx to get ground truth solution."""
         super().__init__(*args, **kwargs)
+        self.device = device
+        self.dtype = dtype
+        dtype_np = torch.rand(0, dtype=dtype).numpy().dtype
+
         data_dir = os.path.join(os.path.dirname(__file__), "data", "birthwt")
         self.X = np.loadtxt(
-            os.path.join(data_dir, "X.csv"), skiprows=1, delimiter=","
+            os.path.join(data_dir, "X.csv"),
+            skiprows=1,
+            delimiter=",",
+            dtype=dtype_np,
         )
-        self.y = np.loadtxt(os.path.join(data_dir, "y.csv"), skiprows=1)
+        self.y = np.loadtxt(
+            os.path.join(data_dir, "y.csv"), skiprows=1, dtype=dtype_np
+        )
+        self.m = len(self.y)
+        self.l_1 = self.l_1_base / (2 * self.m)
+        self.l_2 = self.l_2_base / (2 * self.m)
         self.groups = [
             [0, 1, 2],
             [3, 4, 5],
@@ -128,31 +144,38 @@ class TestGelBirthwt(unittest.TestCase):
             [12],
             [13, 14, 15],
         ]
+        self.done_setup = False
+
+    def setUp(self):
+        if self.device.type == "cuda" and not torch.cuda.is_available():
+            raise unittest.SkipTest("cuda unavailable")
+
+        if self.done_setup:
+            return
+
+        self.ns = torch.tensor([len(g) for g in self.groups])
         self.p = len(self.groups)
-        self.m = len(self.y)
-        self.l_1 = 4. / (2 * self.m)
-        self.l_2 = 0.5 / (2 * self.m)
 
         # Convert things to gel format.
         self.As = []
         for j in range(self.p):
             A_j = self.X[:, self.groups[j]]
-            self.As.append(torch.from_numpy(A_j.astype(np.float32)))
-        self.yt = torch.from_numpy(self.y.astype(np.float32))
-        self.ns = torch.tensor([len(g) for g in self.groups])
+            self.As.append(torch.from_numpy(A_j).to(self.device, self.dtype))
+        self.yt = torch.from_numpy(self.y).to(self.device, self.dtype)
 
         # Solve with cvx.
-        As_cvx = [A_j.numpy() for A_j in self.As]
-        self.b_0_cvx, B = gel_solve_cvx(
-            As_cvx, self.y, self.l_1, self.l_2, self.ns.numpy()
+        self.b_0_cvx, self.B_cvx = gel_solve_cvx(
+            self.As, self.yt, self.l_1, self.l_2, self.ns
         )
-        self.b_cvx = _b2vec(B, self.groups)
+        self.b_cvx = _b2vec(self.B_cvx, self.groups)
         self.obj_cvx = self._obj(self.b_0_cvx, self.b_cvx)
+
+        self.done_setup = True
 
     def _obj(self, b_0, b):
         """Compute the objective function value for the given b_0, b."""
         r = self.y - b_0 - self.X @ b
-        g_b = r @ r / (2. * self.m)
+        g_b = r @ r / (2.0 * self.m)
         b_j_norms = [
             np.linalg.norm(b[self.groups[j]], ord=2) for j in range(self.p)
         ]
@@ -167,13 +190,18 @@ class TestGelBirthwt(unittest.TestCase):
 
     def _compare_to_cvx(self, b_0, b, obj):
         """Compare the given solution to the cvx solution."""
-        self.assertTrue(np.allclose(obj, self.obj_cvx))
-        self.assertTrue(np.allclose(b_0, self.b_0_cvx, atol=1e-4, rtol=1e-3))
-        self.assertTrue(np.allclose(b, self.b_cvx, atol=1e-4, rtol=1e-3))
+        # pylint: disable=no-member
+        self.assertAlmostEqual(obj, self.obj_cvx, places=2)
+        self.assertAlmostEqual(b_0, self.b_0_cvx, places=2)
+        if np.allclose(b, 0) or np.allclose(self.b_cvx, 0):
+            for b_i, b_cvx_i in zip(b, self.b_cvx):
+                self.assertAlmostEqual(b_i, b_cvx_i, places=2)
+        else:
+            self.assertAlmostEqual(cosine(b, self.b_cvx), 0, places=2)
 
     def _test_implementation(self, make_A, gel_solve, **gel_solve_kwargs):
         """Test the given implementation."""
-        A = make_A(self.As, self.ns)
+        A = make_A(self.As, self.ns, self.device, self.dtype)
         b_0, B = gel_solve(
             A, self.yt, self.l_1, self.l_2, self.ns, **gel_solve_kwargs
         )
@@ -188,7 +216,7 @@ class TestGelBirthwt(unittest.TestCase):
             gel_solve_fista,
             t_init=0.1,
             ls_beta=0.9,
-            max_iters=None,
+            max_iters=1000,
             rel_tol=1e-6,
         )
 
@@ -199,7 +227,7 @@ class TestGelBirthwt(unittest.TestCase):
             gel_solve_cd,
             block_solve_fun=block_solve_cvx,
             block_solve_kwargs={},
-            max_cd_iters=None,
+            max_cd_iters=100,
             rel_tol=1e-6,
         )
 
@@ -210,12 +238,12 @@ class TestGelBirthwt(unittest.TestCase):
             gel_solve_cd,
             block_solve_fun=block_solve_agd,
             block_solve_kwargs={
-                "t_init": 0.1,
-                "ls_beta": 0.9,
-                "max_iters": None,
-                "rel_tol": 1e-6,
+                "t_init": 1,
+                "ls_beta": 0.5,
+                "max_iters": 100,
+                "rel_tol": 1e-5,
             },
-            max_cd_iters=None,
+            max_cd_iters=100,
             rel_tol=1e-6,
         )
 
@@ -223,19 +251,65 @@ class TestGelBirthwt(unittest.TestCase):
         """Test the CD implementation with Newton internal solver."""
         # Compute the C_js and I_js.
         Cs = [(A_j.t() @ A_j) / self.m for A_j in self.As]
-        Is = [torch.eye(n_j) for n_j in self.ns]
+        Is = [
+            torch.eye(n_j, device=self.device, dtype=self.dtype)
+            for n_j in self.ns
+        ]
         self._test_implementation(
             make_A_cd,
             gel_solve_cd,
             block_solve_fun=block_solve_newton,
             block_solve_kwargs={
-                "ls_alpha": 0.01,
-                "ls_beta": 0.9,
-                "max_iters": 4,
+                "ls_alpha": 0.1,
+                "ls_beta": 0.5,
+                "max_iters": 10,
                 "tol": 1e-10,
             },
-            max_cd_iters=None,
+            max_cd_iters=100,
             rel_tol=1e-6,
             Cs=Cs,
             Is=Is,
         )
+
+
+def create_gel_birthwt_test(device_name, dtype, *mods):
+    # I'm so sorry.
+    device = torch.device(device_name)
+
+    def __init__(self, *args, **kwargs):
+        TestGelBirthwtBase.__init__(self, device, dtype, *args, **kwargs)
+        for mod in mods:
+            if mod == "l10":
+                self.l_1 = 0
+            elif mod == "l20":
+                self.l_2 = 0
+            elif mod == "nj1":
+                self.groups = [[i] for i in range(self.X.shape[1])]
+            else:
+                raise RuntimeError(f"unrecognized mod: {mod}")
+
+    _doc = f"Test gel implementations on {device_name} with {dtype}"
+    if mods:
+        _doc += f" (mods: {', '.join(mods)})"
+    test_name = f"TestGelBirthwt{device_name.upper()}{str(dtype)[-2:]}"
+    if mods:
+        test_name += f"_{''.join(str(m) for m in mods)}"
+
+    globals()[test_name] = type(
+        test_name,
+        (TestGelBirthwtBase, unittest.TestCase),
+        {"__init__": __init__, "__doc__": _doc},
+    )
+
+
+_mods = ["l10", "l20", "nj1"]
+_mod_subsets = set(
+    frozenset(s)
+    for s in itertools.combinations_with_replacement(_mods, len(_mods))
+)
+_mod_subsets.add(frozenset())
+
+for _device_name, _dtype, _mod_subset in itertools.product(
+    ["cpu", "cuda"], [torch.float32, torch.float64], _mod_subsets
+):
+    create_gel_birthwt_test(_device_name, _dtype, *list(sorted(_mod_subset)))

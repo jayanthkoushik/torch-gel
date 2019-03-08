@@ -35,7 +35,7 @@ setup(
     install_requires=["tqdm>=4.0"],
     python_requires=">=3.5",
     extras_require={
-        "test": ["numpy", "cvxpy>=0.4,<1.0", "cvxopt"],
+        "test": ["numpy", "scipy", "cvxpy>=1.0", "cvxopt"],
         "dev": ["black", "pylint", "isort", "twine", "wheel", "bumpversion"],
     },
 )

@@ -24,10 +24,10 @@ and the Hessian is
 The coefficients are represented using a scalar bias b_0 and a matrix B where
 each row corresponds to a single group (with appropriate 0 padding). The root of
 the group sizes are stored in a vector sns. The features are stored in a list of
-FloatTensor matrices each of size m x n_j where m is the number of samples, and
-n_j is the number of features in group j. For any j, r_j = y - b_0 - sum_{k =/=
-j} A_k@b_k, q_j = r_j - A_j@b_j, C_j = A_j.T@A_j / m, and I_j is an identity
-matrix of size n_j. Finally, a_1 = l_1*sns and a_2 = 2*l_2*sns.
+tensors each of size m x n_j where m is the number of samples, and n_j is the
+number of features in group j. For any j, r_j = y - b_0 - sum_{k =/= j} A_k@b_k,
+q_j = r_j - A_j@b_j, C_j = A_j.T@A_j / m, and I_j is an identity matrix of size
+n_j. Finally, a_1 = l_1*sns and a_2 = 2*l_2*sns.
 """
 
 import torch
@@ -40,9 +40,9 @@ def _f_j(q_j, b_j_norm, a_1_j, a_2_j, m):
         (1/2m)||q_j||^2 + a_1||b_j|| + (a_2/2)||b_j||^2.
     """
     return (
-        ((q_j @ q_j) / (2. * m))
+        ((q_j @ q_j) / (2.0 * m))
         + (a_1_j * b_j_norm)
-        + ((a_2_j / 2.) * (b_j_norm ** 2))
+        + ((a_2_j / 2.0) * (b_j_norm ** 2))
     )
 
 
@@ -71,6 +71,8 @@ def block_solve_agd(
     max_iters=None,
     rel_tol=1e-6,
     verbose=False,
+    zero_thresh=1e-6,
+    zero_fill=1e-3,
 ):
     """Solve the optimization problem for a single block with accelerated
     gradient descent."""
@@ -85,7 +87,7 @@ def block_solve_agd(
 
     while True:
         # Compute the v terms.
-        mom = (k - 2) / (k + 1.)
+        mom = (k - 2) / (k + 1.0)
         v_j = b_j + mom * (b_j - b_j_prev)
         q_v_j = r_j - A_j @ v_j
         v_j_norm = v_j.norm(p=2)
@@ -111,7 +113,7 @@ def block_solve_agd(
             f_b_j = _f_j(q_b_j, b_j_norm, a_1_j, a_2_j, m)
             b_v_diff = b_j - v_j
             c2 = grad_v_j @ b_v_diff
-            c3 = b_v_diff @ b_v_diff / 2.
+            c3 = b_v_diff @ b_v_diff / 2.0
 
             if t * f_b_j <= t * (f_v_j + c2) + c3:
                 break
@@ -119,8 +121,8 @@ def block_solve_agd(
                 t *= ls_beta
 
         # Make b_j non-zero if it is 0.
-        if len((b_j.abs() < 1e-6).nonzero()) == len(b_j):
-            b_j.fill_(1e-3)
+        if len((b_j.abs() < zero_thresh).nonzero()) == len(b_j):
+            b_j.fill_(zero_fill)
             b_j_norm = b_j.norm(p=2)
         b_diff_norm = (b_j - b_j_prev).norm(p=2)
 
@@ -136,7 +138,8 @@ def block_solve_agd(
 
         # Check tolerance exit criterion. Exit when the relative change is less
         # than the tolerance.
-        if b_diff_norm <= rel_tol * b_j_norm:
+        # k > 2 ensures that at least 2 iterations are completed.
+        if b_diff_norm <= rel_tol * b_j_norm and k > 2:
             break
 
     pbar.close()
@@ -202,7 +205,7 @@ def block_solve_newton(
                 t *= ls_beta
 
         # Make b_j non-zero if it is 0.
-        if len((b_j.abs() < 1e-6).nonzero()) == len(b_j):
+        if all(b_j.abs() < tol):
             b_j.fill_(1e-3)
 
         pbar_stats["t"] = "{:.2g}".format(t)
@@ -211,7 +214,7 @@ def block_solve_newton(
         pbar.update()
 
         # Check max iterations stopping criterion.
-        if max_iters is not None and k == max_iters:
+        if max_iters is not None and k == max_iters and k > 2:
             break
         k += 1
 
@@ -219,11 +222,12 @@ def block_solve_newton(
     return b_j
 
 
-def make_A(As, ns, device=None):  # pylint: disable=unused-argument
-    """Moves the As to the provided device (or cpu), and returns as A."""
-    if device is None:
-        device = torch.device("cpu")
-    As = [A_j.to(device) for A_j in As]
+def make_A(
+    As, ns, device=torch.device("cpu"), dtype=torch.float32
+):  # pylint: disable=unused-argument
+    """Move the As to the provided device, convert to the provided dtype, and
+    return as A."""
+    As = [A_j.to(device, dtype) for A_j in As]
     return As
 
 
@@ -235,7 +239,7 @@ def gel_solve(
     ns,
     b_init=None,
     block_solve_fun=block_solve_agd,
-    block_solve_kwargs={},
+    block_solve_kwargs=None,
     max_cd_iters=None,
     rel_tol=1e-6,
     Cs=None,
@@ -245,11 +249,11 @@ def gel_solve(
     """Solve a group elastic net problem.
 
     Arguments:
-        A: list of feature matrices, one per group (size m x n_j).
-        y: FloatTensor vector of predictions.
+        A: list of feature tensors, one per group (size m x n_j).
+        y: tensor vector of predictions.
         l_1: the 2-norm coefficient.
         l_2: the squared 2-norm coefficient.
-        ns: LongTensor of group sizes.
+        ns: iterable of group sizes.
         b_init: tuple (b_0, B) to initialize b.
         block_solve_fun: the function to be used for minimizing individual
             blocks (should be one of the block_solve_* functions).
@@ -265,12 +269,19 @@ def gel_solve(
     """
     p = len(A)
     m = len(y)
+    device = A[0].device
+    dtype = A[0].dtype
+    y = y.to(device, dtype)
+    if block_solve_kwargs is None:
+        block_solve_kwargs = dict()
 
     # Create initial values if not specified.
     if b_init is None:
-        b_init = 0., torch.zeros(p, ns.max())
+        b_init = 0.0, torch.zeros(p, max(ns), device=device, dtype=dtype)
 
-    sns = ns.float().sqrt()
+    if not isinstance(ns, torch.Tensor):
+        ns = torch.tensor(ns)
+    sns = ns.to(device, dtype).sqrt()
     a_1 = l_1 * sns
     ma_1 = m * a_1
     a_2 = 2 * l_2 * sns
@@ -292,7 +303,6 @@ def gel_solve(
         for j in tqdm.trange(
             p,
             desc="Solving individual blocks",
-            ncols=80,
             disable=not verbose,
             leave=False,
         ):
@@ -317,8 +327,8 @@ def gel_solve(
                 B[j, : ns[j]] = block_solve_fun(
                     r_j,
                     A[j],
-                    float(a_1[j]),
-                    float(a_2[j]),
+                    a_1[j].item(),
+                    a_2[j].item(),
                     m,
                     B[j, : ns[j]],
                     verbose=verbose,
@@ -343,9 +353,9 @@ def gel_solve(
         k += 1
 
         # Check tolerance exit criterion.
-        if delta_norm.item() <= rel_tol * b_norm.item():
+        if delta_norm.item() <= rel_tol * b_norm.item() and k > 2:
             break
         b_0_prev, B_prev = b_0, B
 
     pbar.close()
-    return float(b_0), B
+    return b_0.item(), B
