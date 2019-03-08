@@ -50,7 +50,7 @@ Install with `pip`
 pip install torchgel
 ```
 
-`tqdm` (for progress bars) is pulled in as a dependency. PyTorch (`v0.4+`) is
+`tqdm` (for progress bars) is pulled in as a dependency. PyTorch (`v1.0+`) is
 also needed, and needs to be installed manually. Refer to the [PyTorch
 website](<http://pytorch.org>) for instructions.
 

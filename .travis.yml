@@ -5,42 +5,30 @@ os:
 language: generic
 
 env:
-  #- PYTHON_VERSION=3.5 TORCH_VERSION=0.4.0
-  #- PYTHON_VERSION=3.5 TORCH_VERSION=0.4.1
-  #- PYTHON_VERSION=3.5 TORCH_VERSION=1.0.0
-  - PYTHON_VERSION=3.6 TORCH_VERSION=0.4.0
-  - PYTHON_VERSION=3.6 TORCH_VERSION=0.4.1
-  - PYTHON_VERSION=3.6 TORCH_VERSION=1.0.0
-  - PYTHON_VERSION=3.7 TORCH_VERSION=0.4.1
-  - PYTHON_VERSION=3.7 TORCH_VERSION=1.0.0
+  - PYTHON_VERSION=3.5
+  - PYTHON_VERSION=3.6
+  - PYTHON_VERSION=3.7
 
 before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
       CONDA_DOWNLOAD="https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh";
-      TORCH="pytorch";
+      PYTORCH="pytorch";
     else
       CONDA_DOWNLOAD="https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh";
-      TORCH="pytorch-cpu";
+      PYTORCH="pytorch-cpu";
     fi
   - wget $CONDA_DOWNLOAD -O miniconda.sh
   - bash miniconda.sh -b -p $HOME/miniconda
   - export PATH="$HOME/miniconda/bin:$PATH"
   - conda config --set always_yes yes --set changeps1 no
-  - conda update -q conda
   - conda info -a
-  - conda install python=$PYTHON_VERSION
-  - conda install cython
-  - conda install -c conda-forge suitesparse
-  - export CFLAGS=-I$HOME/miniconda/include
-  - export MPLBACKEND=Agg
-  - which python
-  - which pip
-  - python --version
 
 install:
-  - conda install -c pytorch $TORCH=$TORCH_VERSION
-  - pip install torchvision
+  - conda create -n build_env python=$PYTHON_VERSION
+  - source activate build_env
+  - conda install -c pytorch $PYTORCH
   - pip install -e ".[test]"
 
 script:
-  - python -m unittest
+  - python --version
+  - python -m unittest --failfast
