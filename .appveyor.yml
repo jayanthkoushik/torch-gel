@@ -23,8 +23,7 @@ install:
   - pip install -e ".[test]"
 
 before_test:
-  - conda info -a
-  - which python
+  - conda list
   - python --version
   - pip freeze
 
