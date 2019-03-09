@@ -51,7 +51,7 @@ class TestRidgePathsBase:
             self.X, self.y, self.support, self.lambdas, lambda _, b: b
         )
         # Compare each b with the naive solution.
-        I = torch.eye(self.X.size()[0], device=self.device, dtype=self.dtype)
+        I = torch.eye(self.X.shape[0], device=self.device, dtype=self.dtype)
         Q = self.X @ self.X.t()  # X@X.T
         r = self.X @ self.y  # X@y
         for l, b in summaries.items():

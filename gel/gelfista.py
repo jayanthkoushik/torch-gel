@@ -100,7 +100,7 @@ def make_A(As, ns, device=torch.device("cpu"), dtype=torch.float32):
         dtype: torch dtype (default float32).
     """
     A = torch.zeros(
-        len(ns), ns.max(), As[0].size()[0], device=device, dtype=dtype
+        len(ns), ns.max(), As[0].shape[0], device=device, dtype=dtype
     )
     for j, n_j in enumerate(ns):
         # Fill A[j] with A_j.T.

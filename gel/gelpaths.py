@@ -102,9 +102,9 @@ def gel_paths(
     # First compute various required variables.
     l_1s = sorted(l_1s, reverse=True)
     p = len(As)
-    m = As[0].size()[0]
+    m = As[0].shape[0]
     As = [A_j.to(device, dtype) for A_j in As]
-    ns = torch.tensor([A_j.size()[1] for A_j in As])
+    ns = torch.tensor([A_j.shape[1] for A_j in As])
     B_zeros = torch.zeros(p, ns.max().item(), device=device, dtype=dtype)
     sns = ns.to(device, dtype).sqrt().unsqueeze(1).expand_as(B_zeros)
 
@@ -252,9 +252,9 @@ def gel_paths2(
     """
     # Setup is mostly identical to gel_paths.
     p = len(As)
-    m = As[0].size()[0]
+    m = As[0].shape[0]
     As = [A_j.to(device, dtype) for A_j in As]
-    ns = torch.tensor([A_j.size()[1] for A_j in As])
+    ns = torch.tensor([A_j.shape[1] for A_j in As])
     B_zeros = torch.zeros(p, ns.max(), device=device, dtype=dtype)
     sns = ns.to(device, dtype).sqrt().unsqueeze(1).expand_as(B_zeros)
     A = make_A(As, ns, device, dtype)
@@ -333,7 +333,7 @@ def gel_paths2(
             # Find support.
             support = _find_support(B, ns, supp_thresh)
             support_size = 0 if support is None else len(support)
-            full_support = support_size == X.size()[0]
+            full_support = support_size == X.shape[0]
             if verbose:
                 print("Support size: {}".format(support_size), file=sys.stderr)
 
