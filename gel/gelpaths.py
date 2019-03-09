@@ -176,7 +176,10 @@ def gel_paths(
 
             # Solve ridge on support and store summaries.
             if support is not None:
-                X_supp = X[support.to(X.device)].to(device, dtype)
+                if support_size == X.shape[0]:
+                    X_supp = X
+                else:
+                    X_supp = X[support]
             else:
                 X_supp = None
             ridge_summaries = ridge_paths(
@@ -336,7 +339,10 @@ def gel_paths2(
 
             # Solve ridge on support and store summaries.
             if support is not None:
-                X_supp = X[support.to(X.device)].to(device)
+                if full_support:
+                    X_supp = X
+                else:
+                    X_supp = X[support]
             else:
                 X_supp = None
             ridge_summaries = ridge_paths(
