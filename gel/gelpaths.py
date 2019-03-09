@@ -170,8 +170,8 @@ def gel_paths(
 
             # Find support.
             support = _find_support(B, ns, supp_thresh)
+            support_size = 0 if support is None else len(support)
             if verbose:
-                support_size = 0 if support is None else len(support)
                 print("Support size: {}".format(support_size), file=sys.stderr)
 
             # Solve ridge on support and store summaries.
