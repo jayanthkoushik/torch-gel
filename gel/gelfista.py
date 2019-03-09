@@ -77,7 +77,7 @@ def _g(A, b_0, B, y, m):
 def _grad(A, b_0, B, y, p, m):
     """Compute the gradient of g.
 
-    Gradient for b_0 is 1.T@r / -m, and gradient for b_j is A_j.T@r / -m.
+    Gradient for b_0 is 1'@r / -m, and gradient for b_j is A_j'@r / -m.
     """
     r = _r(A, b_0, B, y)
     grad_b_0 = r.sum() / -m
@@ -103,7 +103,7 @@ def make_A(As, ns, device=torch.device("cpu"), dtype=torch.float32):
         len(ns), ns.max(), As[0].shape[0], device=device, dtype=dtype
     )
     for j, n_j in enumerate(ns):
-        # Fill A[j] with A_j.T.
+        # Fill A[j] with A_j'.
         A[j, :n_j, :] = As[j].t()
     return A
 
@@ -188,11 +188,11 @@ def gel_solve(
                 break
 
             # The line search condition is to exit when g(b) <= g(v) +
-            # grad_v.T@(b - v) + (1/2t)||b - v||^2.
+            # grad_v'@(b - v) + (1/2t)||b - v||^2.
             g_b = _g(A, b_0, B, y, m)
             b0_v0_diff = b_0 - v_0
             B_V_diff = B - V
-            # grad_v.T@(b - v):
+            # grad_v'@(b - v):
             c_2 = grad_v_0 * b0_v0_diff + (grad_V * B_V_diff).sum()
             # (1/2t)||b - v||^2:
             c_3 = (b0_v0_diff ** 2 + (B_V_diff ** 2).sum()) / (2.0 * t)

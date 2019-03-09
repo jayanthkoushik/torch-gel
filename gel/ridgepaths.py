@@ -12,16 +12,16 @@ def ridge_paths(X, y, support, lambdas, summ_fun, verbose=False):
     With X (p x m) representing the feature matrix, and y (m x 1) the outcomes,
     the ridge solution is given by
 
-        b = (X@X.T + l*I)^{-1}@X@y
+        b = (X@X' + l*I)^{-1}@X@y
 
     where l is the regularization coefficient. This can be reduced to
 
-        (1/l)*(X@y - X@V(e + l*I)^{-1}@(X@V).T@X@y)
+        (1/l)*(X@y - X@V(e + l*I)^{-1}@(X@V)'@X@y)
 
-    where V@e@V.T is the eigendecomposition of X.T@X. Since (e + l*I) is a
+    where V@e@V' is the eigendecomposition of X'@X. Since (e + l*I) is a
     diagonal matrix, its inverse can be performed efficiently simply by taking
-    the reciprocal of the diagonal elements. Then, (X@V).T@X@y is a vector; so
-    it can be multiplied by (e + l*I)^{-1} just by scalar multiplication.
+    the reciprocal of the diagonal elements. Then, (X@V)'@X@y is a vector; so it
+    can be multiplied by (e + l*I)^{-1} just by scalar multiplication.
 
     Arguments:
         X: pxm tensor of features (where m is the number of samples);
@@ -51,9 +51,9 @@ def ridge_paths(X, y, support, lambdas, summ_fun, verbose=False):
     # Setup.
     _, S, V = torch.svd(X)
     e = S ** 2
-    p = X @ y  # X@y
-    Q = X @ V  # X@V
-    r = Q.t() @ p  # (X@V).T@X@y
+    p = X @ y
+    Q = X @ V
+    r = Q.t() @ p  # (X@V)'@X@y
 
     # Main loop.
     for l in tqdm.tqdm(

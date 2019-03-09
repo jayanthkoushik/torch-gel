@@ -30,8 +30,8 @@ def compute_ls_grid(As, y, sns_vec, m, ks, n_ls, l_eps, dtype):
     sns_j values as opposed to the matrix computed in gel_paths2.
     """
     ls_grid = {}
-    # The bound is given by max{||A_j.T@(y - b_0)||/(m*sqrt{n_j}*k)} where b_0 =
-    # 1.T@y/m. So most things can be precomputed.
+    # The bound is given by max{||A_j'@(y - b_0)||/(m*sqrt{n_j}*k)} where b_0 =
+    # 1'@y/m. So most things can be precomputed.
     l_max_b_0 = y.mean()
     l_max_unscaled = max(
         (A_j.t() @ (y - l_max_b_0)).norm(p=2) / (m * sns_j)
@@ -176,10 +176,7 @@ def gel_paths(
 
             # Solve ridge on support and store summaries.
             if support is not None:
-                if support_size == X.shape[0]:
-                    X_supp = X
-                else:
-                    X_supp = X[support]
+                X_supp = X if support_size == X.shape[0] else X[support]
             else:
                 X_supp = None
             ridge_summaries = ridge_paths(
@@ -339,10 +336,7 @@ def gel_paths2(
 
             # Solve ridge on support and store summaries.
             if support is not None:
-                if full_support:
-                    X_supp = X
-                else:
-                    X_supp = X[support]
+                X_supp = X if full_support else X[support]
             else:
                 X_supp = None
             ridge_summaries = ridge_paths(

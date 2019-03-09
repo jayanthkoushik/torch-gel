@@ -14,19 +14,19 @@ to be chosen. These are the block_solve_* functions. Each solves the above
 optimization problem with respect to one of the b_js, while keeping the others
 fixed. The gradient with respect to b_j is
 
-    (-1/m)A_j.T@(y - b_0 - sum_j A_j@b_j) + sqrt{n_j}(l_1*b_j/||b_j|| +
+    (-1/m)A_j'@(y - b_0 - sum_j A_j@b_j) + sqrt{n_j}(l_1*b_j/||b_j|| +
                                                       2*l_2*b_j).
 
 and the Hessian is
 
-    (1/m)A_j.T@A_j + sqrt{n_j}(l_1*(I/||b_j|| - b_j@b_j.T/||b_j||^3) + 2*l_2*I).
+    (1/m)A_j'@A_j + sqrt{n_j}(l_1*(I/||b_j|| - b_j@b_j'/||b_j||^3) + 2*l_2*I).
 
 The coefficients are represented using a scalar bias b_0 and a matrix B where
 each row corresponds to a single group (with appropriate 0 padding). The root of
 the group sizes are stored in a vector sns. The features are stored in a list of
 tensors each of size m x n_j where m is the number of samples, and n_j is the
 number of features in group j. For any j, r_j = y - b_0 - sum_{k =/= j} A_k@b_k,
-q_j = r_j - A_j@b_j, C_j = A_j.T@A_j / m, and I_j is an identity matrix of size
+q_j = r_j - A_j@b_j, C_j = A_j'@A_j / m, and I_j is an identity matrix of size
 n_j. Finally, a_1 = l_1*sns and a_2 = 2*l_2*sns.
 """
 
@@ -106,7 +106,7 @@ def block_solve_agd(
                 # Don't perform line search.
                 break
 
-            # Line search: exit when f_j(b_j) <= f_j(v_j) + grad_v_j.T@(b_j -
+            # Line search: exit when f_j(b_j) <= f_j(v_j) + grad_v_j'@(b_j -
             # v_j) + (1/2t)||b_j - v_j||^2.
             q_b_j = r_j - A_j @ b_j
             b_j_norm = b_j.norm(p=2)
@@ -296,7 +296,7 @@ def gel_solve(
 
     while True:
         # First minimize with respect to b_0. This has a closed form solution
-        # given by b_0 = 1.T@(y - sum_j A_j@b_j) / m.
+        # given by b_0 = 1'@(y - sum_j A_j@b_j) / m.
         b_0 = (y - sum(A[j] @ B[j, : ns[j]] for j in range(p))).sum() / m
 
         # Now, minimize with respect to each b_j.
@@ -310,7 +310,7 @@ def gel_solve(
                 y - b_0 - sum(A[k] @ B[k, : ns[k]] for k in range(p) if k != j)
             )
 
-            # Check if b_j must be set to 0. The condition is ||A_j.T@r_j|| <=
+            # Check if b_j must be set to 0. The condition is ||A_j'@r_j|| <=
             # m*a_1.
             if (A[j].t() @ r_j).norm(p=2) <= ma_1[j]:
                 B[j] = 0
