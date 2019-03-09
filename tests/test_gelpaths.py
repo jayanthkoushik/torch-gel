@@ -17,7 +17,7 @@ class TestGelPathsBirthwtBase:
 
     l_1_bases = [0.0, 1.0, 10.0, 100.0]
     l_2_bases = [0.0, 0.5, 5.0, 10.0, 50.0]
-    l_rs = [0.001, 0.1, 10.0, 1000.0]
+    l_rs = [0.5, 1.0, 5.0, 10.0, 50.0, 100.0]
     supp_thresh = 1e-2
 
     def __init__(self, device, dtype, *args, **kwargs):
@@ -129,7 +129,7 @@ class TestGelPaths2BirthwtBase(TestGelPathsBirthwtBase):
     ks = [0.1, 0.3, 0.6, 0.9]
     n_ls = 5
     l_eps = 1e-4
-    l_rs = [0.001, 0.1, 10.0, 1000.0]
+    l_rs = [0.5, 1.0, 5.0, 10.0, 50.0, 100.0]
     supp_thresh = 1e-2
     use_ls_grid = False
 
