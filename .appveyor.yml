@@ -17,7 +17,7 @@ environment:
     - PYTHON_VERSION: '3.7'
 
 init:
-  - 'set PATH=%CONDA%;%CONDA%\Scripts;%PATH%''
+  - 'set PATH=%CONDA%;%CONDA%\Scripts;%PATH%'
   - conda config --set always_yes yes --set changeps1 no
 
 install:
