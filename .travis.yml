@@ -25,7 +25,7 @@ before_install:
     fi
   - mkdir -p $HOME/.local/cache
   - wget $CONDA_DOWNLOAD -O $HOME/.local/cache/miniconda.sh
-  - bash $HOME/.local/cache/miniconda.sh -b -p $HOME/miniconda
+  - bash $HOME/.local/cache/miniconda.sh -b -u -p $HOME/miniconda
   - export PATH="$HOME/miniconda/bin:$PATH"
   - conda config --set always_yes yes --set changeps1 no
 
