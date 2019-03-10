@@ -2,24 +2,28 @@ image: Visual Studio 2017
 platform: x64
 build: off
 
+cache:
+  - C:\Miniconda36-x64\pkgs
+  - '%LOCALAPPDATA%\pip\Cache'
+
 environment:
   global:
     CONDA: C:\Miniconda36-x64
     MPLBACKEND: Agg
 
   matrix:
-    - PYTHON_VERSION: "3.5"
-    - PYTHON_VERSION: "3.6"
-    - PYTHON_VERSION: "3.7"
+    - PYTHON_VERSION: '3.5'
+    - PYTHON_VERSION: '3.6'
+    - PYTHON_VERSION: '3.7'
 
 init:
-  - "set PATH=%CONDA%;%CONDA%\\Scripts;%PATH%"
+  - 'set PATH=%CONDA%;%CONDA%\Scripts;%PATH%''
   - conda config --set always_yes yes --set changeps1 no
 
 install:
-  - "conda create -n build_env python=%PYTHON_VERSION%"
+  - 'conda create -n build_env python=%PYTHON_VERSION%'
   - activate build_env
-  - "conda install -c pytorch pytorch-cpu"
+  - conda install -c pytorch pytorch-cpu
   - pip install -e ".[test]"
 
 before_test:
