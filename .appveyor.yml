@@ -24,7 +24,8 @@ install:
   - 'conda create -n build_env python=%PYTHON_VERSION%'
   - activate build_env
   - conda install -c pytorch pytorch-cpu
-  - pip install -e ".[test]"
+  - conda install -c conda-forge poetry
+  - poetry install --no-dev -E "test"
 
 before_test:
   - conda list
