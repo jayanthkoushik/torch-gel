@@ -31,8 +31,7 @@ install:
   - conda create -n build_env python=$PYTHON_VERSION
   - source activate build_env
   - conda install -c pytorch $PYTORCH
-  - conda install -c conda-forge poetry
-  - poetry install --no-dev -E "test"
+  - pip install scipy cvxpy cvxopt
 
 before_script:
   - conda list
