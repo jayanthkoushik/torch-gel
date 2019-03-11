@@ -1,0 +1,36 @@
+[tool.poetry]
+name = "torchgel"
+version = "0.20.1"
+description = "PyTorch implementation of group elastic net"
+authors = ["Jayanth Koushik <jnkoushik@gmail.com>"]
+
+packages = [{ include = "gel" }]
+
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/jayanthkoushik/torch-gel"
+
+keywords = ["pytorch", "lasso", "elasticnet"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
+
+[tool.poetry.dependencies]
+python = "^3.5"
+tqdm = "^4.0"
+numpy = "^1.10"
+
+scipy = { version = "*", optional = true }
+cvxpy = { version = "^1.0", optional = true }
+cvxopt = { version = "*", optional = true }
+
+[tool.poetry.dev-dependencies]
+poetry = "^0.10.0"
+bumpversion = "*"
+
+[tool.poetry.extras]
+test = ["scipy", "cvxpy", "cvxopt"]
