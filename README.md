@@ -50,11 +50,17 @@ Install with `pip`
 pip install torchgel
 ```
 
-`tqdm` (for progress bars) is pulled in as a dependency. PyTorch (`v1.0+`) is
-also needed, and needs to be installed manually. Refer to the [PyTorch
-website](<http://pytorch.org>) for instructions.
+`tqdm` (for progress bars), and numpy are pulled in as dependencies. PyTorch
+(`v1.0+`) is also needed, and needs to be installed manually. Refer to the
+[PyTorch website](<http://pytorch.org>) for instructions.
 
-## Solving Single Instances
+## Usage
+`examples/main.ipynb` is a Jupyter notebook that walks through using the package
+for a typical use-case. A more formal description of the functions follows; and
+for details about the algorithms, refer to the docstrings of files in the `gel`
+directory.
+
+### Solving Single Instances
 The modules `gel.gelfista` and `gel.gelcd` provide implementations based on
 proximal gradient descent and coordinate descent respectively. Both have similar
 interfaces, and expose two main public functions: `make_A` and `gel_solve`. The
@@ -81,12 +87,12 @@ PyTorch matrix `B` holding the other coefficients. `B` has size _p ×_
 max<sub>_j_</sub> _n<sub>j</sub>_ with suitable zero padding. The following
 sections cover additional details for the specific implementations.
 
-### Proximal Gradient Descent (FISTA)
+#### Proximal Gradient Descent (FISTA)
 The `gel.gelfista` module contains a proximal gradient descent implementation.
 It's usage is just as described in the template above. Refer to the docstring
 for `gel.gelfista.gel_solve` for details about the other arguments.
 
-### Coordinate Descent
+#### Coordinate Descent
 The `gel.gelcd` module contains a coordinate descent implementation. Its usage
 is a bit more involved than the FISTA implementation. Coordinate descent
 iteratively solves single blocks (each corresponding to a single
@@ -96,7 +102,7 @@ docstrings for details about their arguments. `gel.gelcd.gel_solve` requires
 passing a block solve function and its arguments (as a dictionary). Refer to
 its docstring for further details.
 
-## Solution Paths
+### Solution Paths
 `gel.gelpaths` provides a wrapper function `gel_paths` to solve the group
 elastic net problem for multiple values of the regularization coefficients. It
 implements a two-stage process. For a given _λ<sub>1</sub>_ and _λ<sub>2</sub>_,
