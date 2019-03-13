@@ -55,10 +55,10 @@ pip install torchgel
 [PyTorch website](<http://pytorch.org>) for instructions.
 
 ## Usage
-`examples/main.ipynb` is a Jupyter notebook that walks through using the package
-for a typical use-case. A more formal description of the functions follows; and
-for details about the algorithms, refer to the docstrings of files in the `gel`
-directory.
+[`examples/main.ipynb`](examples/main.ipynb) is a Jupyter notebook that walks
+through using the package for a typical use-case. A more formal description of
+the functions follows; and for details about the algorithms, refer to the
+docstrings of files in the `gel` directory.
 
 ### Solving Single Instances
 The modules `gel.gelfista` and `gel.gelcd` provide implementations based on
