@@ -14,7 +14,9 @@ from gel.ridgepaths import ridge_paths
 
 def _find_support(B, ns, supp_thresh):
     """Find features with non-zero coefficients."""
-    support = (B.norm(p=2, dim=1, keepdim=True) >= supp_thresh).expand_as(B)
+    ns_cast = ns.unsqueeze(1).to(B.device, B.dtype)
+    norms = (B ** 2).sum(dim=1, keepdim=True) / ns_cast
+    support = (norms >= supp_thresh).expand_as(B)
     support = torch.cat([s_j[:n_j] for s_j, n_j in zip(support, ns)])
     support = torch.nonzero(support)[:, 0]
     if not support.numel():
