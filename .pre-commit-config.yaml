@@ -3,3 +3,11 @@ repos:
   rev: stable
   hooks:
   - id: black
+
+- repo: local
+  hooks:
+  - id: nbstrip
+    name: strip jupyter notebooks
+    files: \.ipynb$
+    entry: .githooks/nbstrip.sh
+    language: script
