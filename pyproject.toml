@@ -30,6 +30,7 @@ cvxopt = { version = "*", optional = true }
 
 [tool.poetry.dev-dependencies]
 bumpversion = "*"
+pre-commit = "^1.15"
 
 [tool.poetry.extras]
 test = ["scipy", "cvxpy", "cvxopt"]
