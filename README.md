@@ -1,24 +1,5 @@
 # torch-gel
 
-[![Travis][travis-badge]][travis]
-[![Appveyor][appveyor-badge]][appveyor]
-[![PyPI][pypi-badge]][pypi]
-[![PyPi - Python Version][pypi-version-badge]][pypi]
-[![GitHub license][license-badge]][license]
-[![Code style: black][black-badge]][black]
-
-[travis-badge]: https://img.shields.io/travis/jayanthkoushik/torch-gel.svg?style=for-the-badge&logo=travis
-[travis]: https://travis-ci.org/jayanthkoushik/torch-gel
-[pypi-badge]: https://img.shields.io/pypi/v/torchgel.svg?style=for-the-badge
-[pypi-version-badge]: https://img.shields.io/pypi/pyversions/torchgel.svg?style=for-the-badge
-[pypi]: https://pypi.org/project/torchgel/
-[license-badge]: https://img.shields.io/github/license/jayanthkoushik/torch-gel.svg?style=for-the-badge
-[license]: https://github.com/jayanthkoushik/torch-gel/blob/master/LICENSE
-[black-badge]: https://img.shields.io/badge/code%20style-black-000000.svg?style=for-the-badge
-[black]: https://github.com/ambv/black
-[appveyor-badge]: https://img.shields.io/appveyor/ci/jayanthkoushik/torch-gel.svg?style=for-the-badge&logo=appveyor
-[appveyor]: https://ci.appveyor.com/project/jayanthkoushik/torch-gel
-
 This package provides PyTorch implementations to solve the group elastic net
 problem. Let _A<sub>j</sub>_ (_j = 1 … p_) be feature matrices of sizes _m ×
 n<sub>j</sub>_ (_m_ is the number of samples, and _n<sub>j</sub>_ is the number
