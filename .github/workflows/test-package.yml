@@ -2,6 +2,8 @@ name: Test package
 
 on:
   push:
+    branches:
+    - master
     paths:
     - 'gel/*'
     - 'tests/*'
