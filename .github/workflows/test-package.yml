@@ -1,0 +1,30 @@
+name: Test package
+
+on:
+  push:
+    paths:
+    - 'gel/*'
+    - 'tests/*'
+    - '.github/workflows/test-package.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.5, 3.6, 3.7]
+      fail-fast: false
+
+    steps:
+    - uses: actions/checkout@master
+      with:
+        fetch-depth: 1
+    - uses: actions/setup-python@master
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install poetry
+      run: curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python
+    - name: Install dependencies
+      run: $HOME/.poetry/bin/poetry install --no-dev -E 'test'
+    - name: Run tests
+      run: $HOME/.poetry/bin/poetry run python -m unittest tests/*
