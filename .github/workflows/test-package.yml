@@ -32,4 +32,4 @@ jobs:
         $HOME/.poetry/bin/poetry install --no-dev -E 'test'
         $HOME/.poetry/bin/poetry run pip install torch
     - name: Run tests
-      run: $HOME/.poetry/bin/poetry run python -m unittest tests/*
+      run: $HOME/.poetry/bin/poetry run python -m unittest
