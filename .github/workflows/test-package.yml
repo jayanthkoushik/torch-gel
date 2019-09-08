@@ -8,6 +8,7 @@ on:
     - 'gel/*'
     - 'tests/*'
     - '.github/workflows/test-package.yml'
+    - 'pyproject.toml'
 
 jobs:
   test:
