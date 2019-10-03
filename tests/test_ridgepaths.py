@@ -39,9 +39,7 @@ class TestRidgePathsBase:
         if self.device.type == "cuda" and not torch.cuda.is_available():
             raise unittest.SkipTest("cuda unavailable")
 
-        self.X = torch.randn(
-            self.p, self.m, device=self.device, dtype=self.dtype
-        )
+        self.X = torch.randn(self.p, self.m, device=self.device, dtype=self.dtype)
         self.y = torch.randn(self.m, device=self.device, dtype=self.dtype)
 
     def test_against_naive(self):
@@ -67,9 +65,7 @@ def create_ridgepaths_test(device_name, dtype, m, p):
     def __init__(self, *args, **kwargs):
         TestRidgePathsBase.__init__(self, device, dtype, m, p, *args, **kwargs)
 
-    _doc = "Test ridge_paths on {} with {} ({}x{})".format(
-        device_name, dtype, m, p
-    )
+    _doc = "Test ridge_paths on {} with {} ({}x{})".format(device_name, dtype, m, p)
     test_name = "TestRidgePaths" + device_name.upper() + str(dtype)[-2:]
     test_name += "_{}x{}".format(m, p)
 

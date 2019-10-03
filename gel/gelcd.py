@@ -54,9 +54,7 @@ def _grad_j(q_j, A_j, b_j, b_j_norm, a_1_j, a_2_j, m):
 def _hess_j(C_j, I_j, b_j, b_j_norm, a_1_j, a_2_j):
     """Compute the Hessian with respect to one of the coefficients."""
     D_j = torch.ger(b_j, b_j)
-    return (
-        C_j + (a_1_j / b_j_norm) * (I_j - D_j / (b_j_norm ** 2)) + a_2_j * I_j
-    )
+    return C_j + (a_1_j / b_j_norm) * (I_j - D_j / (b_j_norm ** 2)) + a_2_j * I_j
 
 
 def block_solve_agd(
@@ -81,9 +79,7 @@ def block_solve_agd(
     k = 1  # iteration number
     t = 1  # initial step length (used if t_init is None)
     pbar_stats = {}  # stats for the progress bar
-    pbar = tqdm.tqdm(
-        desc="Solving block with AGD", disable=not verbose, leave=False
-    )
+    pbar = tqdm.tqdm(desc="Solving block with AGD", disable=not verbose, leave=False)
 
     while True:
         # Compute the v terms.
@@ -167,9 +163,7 @@ def block_solve_newton(
     k = 1
     pbar_stats = {}  # stats for the progress bar
     pbar = tqdm.tqdm(
-        desc="Solving block with Newton's method",
-        disable=not verbose,
-        leave=False,
+        desc="Solving block with Newton's method", disable=not verbose, leave=False
     )
 
     while True:
@@ -301,14 +295,9 @@ def gel_solve(
 
         # Now, minimize with respect to each b_j.
         for j in tqdm.trange(
-            p,
-            desc="Solving individual blocks",
-            disable=not verbose,
-            leave=False,
+            p, desc="Solving individual blocks", disable=not verbose, leave=False
         ):
-            r_j = (
-                y - b_0 - sum(A[k] @ B[k, : ns[k]] for k in range(p) if k != j)
-            )
+            r_j = y - b_0 - sum(A[k] @ B[k, : ns[k]] for k in range(p) if k != j)
 
             # Check if b_j must be set to 0. The condition is ||A_j'@r_j|| <=
             # m*a_1.
@@ -332,7 +321,7 @@ def gel_solve(
                     m,
                     B[j, : ns[j]],
                     verbose=verbose,
-                    **block_solve_kwargs
+                    **block_solve_kwargs,
                 )
 
         # Compute relative change in b.
@@ -341,9 +330,7 @@ def gel_solve(
         delta_norm = (b_0_diff ** 2 + (B_diff ** 2).sum()).sqrt()
         b_norm = (b_0 ** 2 + (B ** 2).sum()).sqrt()
 
-        pbar_stats["rel change"] = "{:.2g}".format(
-            delta_norm.item() / b_norm.item()
-        )
+        pbar_stats["rel change"] = "{:.2g}".format(delta_norm.item() / b_norm.item())
         pbar.set_postfix(pbar_stats)
         pbar.update()
 

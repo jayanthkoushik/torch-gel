@@ -1,3 +1,7 @@
+[tool.black]
+line-length = 88
+target-version = ["py35"]
+
 [tool.poetry]
 name = "torchgel"
 version = "1.0.0"

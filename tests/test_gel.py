@@ -123,14 +123,9 @@ class TestGelBirthwtBase:
 
         data_dir = os.path.join(os.path.dirname(__file__), "data", "birthwt")
         self.X = np.loadtxt(
-            os.path.join(data_dir, "X.csv"),
-            skiprows=1,
-            delimiter=",",
-            dtype=dtype_np,
+            os.path.join(data_dir, "X.csv"), skiprows=1, delimiter=",", dtype=dtype_np
         )
-        self.y = np.loadtxt(
-            os.path.join(data_dir, "y.csv"), skiprows=1, dtype=dtype_np
-        )
+        self.y = np.loadtxt(os.path.join(data_dir, "y.csv"), skiprows=1, dtype=dtype_np)
         self.m = len(self.y)
         self.l_1 = self.l_1_base / (2 * self.m)
         self.l_2 = self.l_2_base / (2 * self.m)
@@ -176,15 +171,12 @@ class TestGelBirthwtBase:
         """Compute the objective function value for the given b_0, b."""
         r = self.y - b_0 - self.X @ b
         g_b = r @ r / (2.0 * self.m)
-        b_j_norms = [
-            np.linalg.norm(b[self.groups[j]], ord=2) for j in range(self.p)
-        ]
+        b_j_norms = [np.linalg.norm(b[self.groups[j]], ord=2) for j in range(self.p)]
         h_b = self.l_1 * sum(
             np.sqrt(len(self.groups[j])) * b_j_norms[j] for j in range(self.p)
         )
         h_b += self.l_2 * sum(
-            np.sqrt(len(self.groups[j])) * (b_j_norms[j] ** 2)
-            for j in range(self.p)
+            np.sqrt(len(self.groups[j])) * (b_j_norms[j] ** 2) for j in range(self.p)
         )
         return g_b + h_b
 
@@ -202,9 +194,7 @@ class TestGelBirthwtBase:
     def _test_implementation(self, make_A, gel_solve, **gel_solve_kwargs):
         """Test the given implementation."""
         A = make_A(self.As, self.ns, self.device, self.dtype)
-        b_0, B = gel_solve(
-            A, self.yt, self.l_1, self.l_2, self.ns, **gel_solve_kwargs
-        )
+        b_0, B = gel_solve(A, self.yt, self.l_1, self.l_2, self.ns, **gel_solve_kwargs)
         b = _b2vec(B, self.groups)
         obj = self._obj(b_0, b)
         self._compare_to_cvx(b_0, b, obj)
@@ -251,10 +241,7 @@ class TestGelBirthwtBase:
         """Test the CD implementation with Newton internal solver."""
         # Compute the C_js and I_js.
         Cs = [(A_j.t() @ A_j) / self.m for A_j in self.As]
-        Is = [
-            torch.eye(n_j, device=self.device, dtype=self.dtype)
-            for n_j in self.ns
-        ]
+        Is = [torch.eye(n_j, device=self.device, dtype=self.dtype) for n_j in self.ns]
         self._test_implementation(
             make_A_cd,
             gel_solve_cd,
@@ -304,8 +291,7 @@ def create_gel_birthwt_test(device_name, dtype, *mods):
 
 _mods = ["l10", "l20", "nj1"]
 _mod_subsets = set(
-    frozenset(s)
-    for s in itertools.combinations_with_replacement(_mods, len(_mods))
+    frozenset(s) for s in itertools.combinations_with_replacement(_mods, len(_mods))
 )
 _mod_subsets.add(frozenset())
 

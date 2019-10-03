@@ -181,9 +181,7 @@ def gel_paths(
                 X_supp = X if support_size == X.shape[0] else X[support]
             else:
                 X_supp = None
-            ridge_summaries = ridge_paths(
-                X_supp, y, support, l_rs, summ_fun, verbose
-            )
+            ridge_summaries = ridge_paths(X_supp, y, support, l_rs, summ_fun, verbose)
             del X_supp
             for l_r, summary in ridge_summaries.items():
                 summaries[(l_1, l_2, l_r)] = summary
@@ -262,22 +260,16 @@ def gel_paths2(
 
     y = y.to(device, dtype)
     if "Cs" in gel_solve_kwargs:
-        gel_solve_kwargs["Cs"] = [
-            C_j.to(device) for C_j in gel_solve_kwargs["Cs"]
-        ]
+        gel_solve_kwargs["Cs"] = [C_j.to(device) for C_j in gel_solve_kwargs["Cs"]]
     if "Is" in gel_solve_kwargs:
-        gel_solve_kwargs["Is"] = [
-            I_j.to(device) for I_j in gel_solve_kwargs["Is"]
-        ]
+        gel_solve_kwargs["Is"] = [I_j.to(device) for I_j in gel_solve_kwargs["Is"]]
 
     if ls_grid is None:
         ls_grid = compute_ls_grid(As, y, sns[:, 0], m, ks, n_ls, l_eps, dtype)
         ls_grid_self = None
     else:
         # Compute l values with self data to get good initializations.
-        ls_grid_self = compute_ls_grid(
-            As, y, sns[:, 0], m, ks, n_ls, l_eps, dtype
-        )
+        ls_grid_self = compute_ls_grid(As, y, sns[:, 0], m, ks, n_ls, l_eps, dtype)
         gel_solve_kwargs_aux = gel_solve_kwargs.copy()
         gel_solve_kwargs_aux["rel_tol"] = aux_rel_tol
 
@@ -341,9 +333,7 @@ def gel_paths2(
                 X_supp = X if full_support else X[support]
             else:
                 X_supp = None
-            ridge_summaries = ridge_paths(
-                X_supp, y, support, l_rs, summ_fun, verbose
-            )
+            ridge_summaries = ridge_paths(X_supp, y, support, l_rs, summ_fun, verbose)
             del X_supp
             for l_r, summary in ridge_summaries.items():
                 summaries[(l_1, l_2, l_r)] = summary

@@ -53,13 +53,9 @@ class TestGelPathsBirthwtBase:
             self.gel_test.done_setup = False
             self.gel_test.setUp()
 
-            support_cvx = _find_support(
-                self.gel_test.B_cvx, self.ns, self.supp_thresh
-            )
+            support_cvx = _find_support(self.gel_test.B_cvx, self.ns, self.supp_thresh)
             X_support = (
-                None
-                if support_cvx is None
-                else self.X_p[support_cvx.to(self.device)]
+                None if support_cvx is None else self.X_p[support_cvx.to(self.device)]
             )
 
             summaries_cvx = ridge_paths(
@@ -188,9 +184,7 @@ class TestGelPaths2BirthwtBase(TestGelPathsBirthwtBase):
         )
 
         # Make sure the (l_1, l_2, l_r) grid is the same.
-        self.assertSetEqual(
-            set(summaries.keys()), set(self.summaries_cvxs.keys())
-        )
+        self.assertSetEqual(set(summaries.keys()), set(self.summaries_cvxs.keys()))
 
         for l_1, l_2, _ in summaries:
             self.assertGreater(l_1, 0)
@@ -220,9 +214,7 @@ def create_gelpaths_birthwt_test(device_name, dtype, two=False, grid=False):
     _doc = "Test gel_paths{} on {} with {}".format(T, device_name, dtype)
     if grid:
         _doc += " (with precomputed ls_grid)"
-    test_name = (
-        "TestGelPaths" + T + "Birthwt" + device_name.upper() + str(dtype)[-2:]
-    )
+    test_name = "TestGelPaths" + T + "Birthwt" + device_name.upper() + str(dtype)[-2:]
 
     globals()[test_name] = type(
         test_name,

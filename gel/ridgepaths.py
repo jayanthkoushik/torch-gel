@@ -56,9 +56,7 @@ def ridge_paths(X, y, support, lambdas, summ_fun, verbose=False):
     r = Q.t() @ p  # (X@V)'@X@y
 
     # Main loop.
-    for l in tqdm.tqdm(
-        lambdas, desc="Solving ridge regressions", disable=not verbose
-    ):
+    for l in tqdm.tqdm(lambdas, desc="Solving ridge regressions", disable=not verbose):
         b = (1.0 / l) * (p - Q @ (r / (e + l)))
         summaries[l] = summ_fun(support, b)
     return summaries
