@@ -26,10 +26,10 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install poetry
-      run: python -m pip install poetry
+      run: pip install poetry
     - name: Install dependencies
       run: |
-        python -m poetry install --no-dev -E 'test'
-        python -m pip install torch
+        poetry install --no-dev -E 'test'
+        poetry run pip install torch
     - name: Run tests
-      run: python -m unittest
+      run: poetry run python -m unittest
