@@ -26,10 +26,10 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install poetry
-      run: curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python
+      run: python -m pip install poetry
     - name: Install dependencies
       run: |
-        $HOME/.poetry/bin/poetry install --no-dev -E 'test'
-        $HOME/.poetry/bin/poetry run pip install torch
+        python -m poetry install --no-dev -E 'test'
+        python -m pip install torch
     - name: Run tests
-      run: $HOME/.poetry/bin/poetry run python -m unittest
+      run: python -m unittest
