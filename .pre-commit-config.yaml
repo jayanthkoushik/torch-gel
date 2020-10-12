@@ -1,13 +1,29 @@
 repos:
-- repo: https://github.com/ambv/black
-  rev: stable
-  hooks:
-  - id: black
-
 - repo: local
   hooks:
+  - id: black
+    name: black
+    entry: poetry run black
+    language: system
+    types: [python]
+  - id: isort
+    name: isort
+    entry: poetry run isort
+    language: system
+    types: [python]
+  - id: pylint
+    name: pylint
+    entry: poetry run pylint
+    language: system
+    types: [python]
+  - id: mypy
+    name: mypy
+    entry: poetry run mypy --ignore-missing-imports .
+    language: system
+    types: [python]
+    pass_filenames: false
   - id: nbstrip
     name: strip jupyter notebooks
-    files: \.ipynb$
-    entry: .githooks/nbstrip.sh
+    types: [jupyter]
     language: script
+    entry: .githooks/nbstrip.sh
