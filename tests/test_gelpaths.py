@@ -3,8 +3,8 @@
 import itertools
 import unittest
 
-from scipy.spatial.distance import cosine
 import torch
+from scipy.spatial.distance import cosine
 
 from gel.gelpaths import _find_support, compute_ls_grid, gel_paths, gel_paths2
 from gel.ridgepaths import ridge_paths

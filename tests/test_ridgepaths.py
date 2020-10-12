@@ -3,8 +3,8 @@
 import itertools
 import unittest
 
-from scipy.spatial.distance import cosine
 import torch
+from scipy.spatial.distance import cosine
 
 from gel.ridgepaths import ridge_paths
 

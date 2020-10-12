@@ -6,8 +6,8 @@ import unittest
 
 import cvxpy as cvx
 import numpy as np
-from scipy.spatial.distance import cosine
 import torch
+from scipy.spatial.distance import cosine
 
 from gel.gelcd import (
     block_solve_agd,

@@ -36,8 +36,7 @@ import tqdm
 
 def _f_j(q_j, b_j_norm, a_1_j, a_2_j, m):
     """Compute the objective with respect to one of the coefficients i.e.
-
-        (1/2m)||q_j||^2 + a_1||b_j|| + (a_2/2)||b_j||^2.
+    (1/2m)||q_j||^2 + a_1||b_j|| + (a_2/2)||b_j||^2.
     """
     return (
         ((q_j @ q_j) / (2.0 * m))
@@ -113,8 +112,7 @@ def block_solve_agd(
 
             if t * f_b_j <= t * (f_v_j + c2) + c3:
                 break
-            else:
-                t *= ls_beta
+            t *= ls_beta
 
         # Make b_j non-zero if it is 0.
         if len((b_j.abs() < zero_thresh).nonzero()) == len(b_j):
@@ -195,8 +193,7 @@ def block_solve_newton(
             if f_bp_j <= f_b_j - ls_alpha * t * k_j:
                 b_j = bp_j
                 break
-            else:
-                t *= ls_beta
+            t *= ls_beta
 
         # Make b_j non-zero if it is 0.
         if all(b_j.abs() < tol):

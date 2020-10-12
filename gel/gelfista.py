@@ -197,8 +197,7 @@ def gel_solve(
 
             if g_b <= g_v + c_2 + c_3:
                 break
-            else:
-                t *= ls_beta
+            t *= ls_beta
 
         # Compute relative change in b.
         b_0_diff = b_0 - b_0_prev
