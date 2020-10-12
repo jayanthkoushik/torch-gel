@@ -1,0 +1,23 @@
+name: Publish package to pypi
+
+on:
+  push:
+    tags:
+    - 'v*'
+
+jobs:
+  main:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - uses: actions/setup-python@master
+      with:
+        python-version: 3.7
+    - name: Install poetry
+      run: curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python
+    - name: Build dist
+      run: $HOME/.poetry/bin/poetry build
+    - name: Publish to pypi
+      run: $HOME/.poetry/bin/poetry publish -u jayanth_koushik -p $PYPI_PASSWORD
+      env:
+        PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
