@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "torchgel"
-version = "1.0.0"
+version = "2.0.0"
 description = "PyTorch implementation of group elastic net"
 authors = ["Jayanth Koushik <jnkoushik@gmail.com>"]
 license = "MIT"
