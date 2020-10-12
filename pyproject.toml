@@ -30,7 +30,7 @@ numpy = "^1.10"
 
 scipy = { version = "*", optional = true }
 cvxpy = { version = "^1.0", optional = true }
-cvxopt = { version = "*", optional = true }
+cvxopt = { version = "1.2.5", optional = true }
 
 [tool.poetry.dev-dependencies]
 bumpversion = "*"
